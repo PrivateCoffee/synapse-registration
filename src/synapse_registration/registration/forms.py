@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 
 
 class UsernameForm(forms.Form):
@@ -8,6 +9,27 @@ class UsernameForm(forms.Form):
             attrs={"class": "input", "placeholder": "Enter your desired username"}
         ),
     )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        username = cleaned_data.get("username")
+
+        if username.startswith("@") and username.endswith(f":{settings.MATRIX_DOMAIN}"):
+            username = username[1:-len(f":{settings.MATRIX_DOMAIN}")]
+
+        if not username:
+            self.add_error("username", "Username cannot be empty.")
+
+        if not all(
+            c in "abcdefghijklmnopqrstuvwxyz0123456789._=-" for c in username.lower()
+        ):
+            self.add_error(
+                "username",
+                "Username can only contain the characters a-z, 0-9, ., _, =, -, and /.",
+            )
+
+        cleaned_data["username"] = username
+        return cleaned_data
 
 
 class EmailForm(forms.Form):
