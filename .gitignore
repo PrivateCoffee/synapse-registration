@@ -1,0 +1,8 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+/dist/
+config.yaml
+db.sqlite3
+db.sqlite3-journal

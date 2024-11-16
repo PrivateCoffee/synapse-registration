@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}
+    Error
+{% endblock title %}
+{% block content %}
+    <div class="notification is-danger">
+        <button class="delete"></button>
+        An error has occurred. Please try again later or contact support.
+    </div>
+    <div class="content">
+        <h1 class="title">Something Went Wrong</h1>
+        <p>
+            We're sorry, but an unexpected error has occurred. Please try reloading the page, or <a href="{% url 'landing_page' %}">return to the homepage</a>.
+        </p>
+    </div>
+{% endblock content %}

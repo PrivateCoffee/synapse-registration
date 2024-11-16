@@ -1,0 +1,14 @@
+synapse:
+  admin_token: syt_your_admin_token
+  server: https://matrix.your.server
+  domain: your.server # i.e. the part after the : in your matrix ID
+hosts:
+  - register.matrix.your.server
+email:
+  host: mail.your.server
+  port: 587
+  username: registrations@your.server
+  password: your_password
+  tls: true
+admin:
+  email: admin@your.server

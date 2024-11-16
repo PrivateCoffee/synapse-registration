@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}
+    Complete Registration
+{% endblock title %}
+{% block content %}
+    <h1 class="title">Complete Your Registration</h1>
+    <form method="post" class="box">
+        {% csrf_token %}
+        <div class="field">
+            {{ form.password1.label_tag }}
+            <div class="control">{{ form.password1 }}</div>
+            <p class="help is-danger">{{ form.password1.errors }}</p>
+        </div>
+        <div class="field">
+            {{ form.password2.label_tag }}
+            <div class="control">{{ form.password2 }}</div>
+            <p class="help is-danger">{{ form.password2.errors }}</p>
+        </div>
+        <div class="field">
+            {{ form.registration_reason.label_tag }}
+            <div class="control">{{ form.registration_reason }}</div>
+            <p class="help is-danger">{{ form.registration_reason.errors }}</p>
+        </div>
+        <button type="submit" class="button is-link">Complete Registration</button>
+    </form>
+{% endblock content %}

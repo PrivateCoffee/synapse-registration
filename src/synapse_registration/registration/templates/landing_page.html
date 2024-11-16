@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}
+    Welcome to Matrix!
+{% endblock title %}
+{% block content %}
+    <div class="hero is-primary">
+        <div class="hero-body">
+            <p class="title">Welcome to Our Matrix Server</p>
+            <p class="subtitle">Join us to connect securely and communicate openly across the Matrix network.</p>
+            <a href="{% url 'check_username' %}" class="button is-link">Start Your Journey</a>
+        </div>
+    </div>
+    <div class="section">
+        <div class="content">
+            <h2 class="title">Why Join Our Matrix Server?</h2>
+            <p>
+                Matrix is an open standard for secure, decentralized, and real-time communication. By joining our server, you gain access to:
+            </p>
+            <ul>
+                <li>Secure messaging and VoIP with end-to-end encryption.</li>
+                <li>Interoperability with other Matrix users and servers globally.</li>
+                <li>Community and direct chats with powerful, extensible features.</li>
+                <li>A platform that respects your privacy and data ownership.</li>
+            </ul>
+            <p>
+                Whether you're here to chat with friends, collaborate on projects, or explore the potential of decentralized communications, we're excited to have you on board. Click the button above to start your registration and become part of our network.
+            </p>
+        </div>
+    </div>
+{% endblock content %}

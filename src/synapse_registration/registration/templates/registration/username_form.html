@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}
+    Choose Username
+{% endblock title %}
+{% block content %}
+    <h1 class="title">Choose a Username</h1>
+    <form method="post" class="box">
+        {% csrf_token %}
+        <div class="field">
+            {{ form.username.label_tag }}
+            <div class="control">{{ form.username }}</div>
+            <p class="help is-danger">{{ form.username.errors }}</p>
+        </div>
+        <button type="submit" class="button is-link">Next</button>
+    </form>
+{% endblock content %}

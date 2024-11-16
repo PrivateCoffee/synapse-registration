@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "synapse_registration"
+version = "0.1.0"
+authors = [{ name = "Private.coffee Team", email = "support@private.coffee" }]
+description = "A Django app for allowing users to register for a Synapse account."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = ["Django", "pyyaml", "requests"]
+
+[project.scripts]
+synapse_registration = "synapse_registration.manage:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/synapse_registration"]
+
+[project.urls]
+"Homepage" = "https://git.private.coffee/privatecoffee/synapse-registration"
+"Bug Tracker" = "https://git.private.coffee/privatecoffee/synapse-registration/issues"
+"Source Code" = "https://git.private.coffee/privatecoffee/synapse-registration"
