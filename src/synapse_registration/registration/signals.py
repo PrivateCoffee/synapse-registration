@@ -16,7 +16,7 @@ def handle_status_change(sender, instance, created, **kwargs):
         if status == UserRegistration.STATUS_APPROVED:
             send_mail(
                 "Registration Approved",
-                f"Congratulations, {instance.username}! Your registration has been approved.",
+                f"Congratulations, {instance.username}! Your registration at {settings.MATRIX_DOMAIN} has been approved.",
                 settings.DEFAULT_FROM_EMAIL,
                 [instance.email],
             )
@@ -49,7 +49,7 @@ def handle_status_change(sender, instance, created, **kwargs):
         elif status == UserRegistration.STATUS_DENIED:
             send_mail(
                 "Registration Denied",
-                f"Sorry, {instance.username}. Your registration request has been denied.",
+                f"Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied.",
                 settings.DEFAULT_FROM_EMAIL,
                 [instance.email],
             )
