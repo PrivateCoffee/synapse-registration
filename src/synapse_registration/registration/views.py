@@ -3,10 +3,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.core.mail import send_mail
 from django.conf import settings
+
 from .forms import UsernameForm, EmailForm, RegistrationForm
 from .models import UserRegistration
+
 import requests
+
 from secrets import token_urlsafe
+from datetime import datetime, timedelta
 
 
 class LandingPageView(TemplateView):
@@ -51,12 +55,21 @@ class EmailInputView(FormView):
             )
             return self.form_invalid(form)
 
-        token = token_urlsafe(32)
-
         if not settings.TRUST_PROXY:
             ip_address = self.request.META.get("REMOTE_ADDR")
         else:
             ip_address = self.request.META.get("HTTP_X_FORWARDED_FOR")
+
+        if (
+            UserRegistration.objects.filter(
+                ip_address=ip_address,
+                timestamp__gte=datetime.now() - timedelta(hours=24),
+            ).count()
+            >= 5
+        ):
+            return render(self.request, "registration/ratelimit.html", status=429)
+
+        token = token_urlsafe(32)
 
         UserRegistration.objects.create(
             username=self.request.session["username"],
