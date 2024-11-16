@@ -78,7 +78,10 @@ class EmailInputView(FormView):
 
 class VerifyEmailView(View):
     def get(self, request, token):
-        registration = get_object_or_404(UserRegistration, token=token)
+        try:
+            registration = UserRegistration.objects.get(token=token)
+        except UserRegistration.DoesNotExist:
+            return render(request, "registration/registration_forbidden.html", status=403)
 
         if registration.status != UserRegistration.STATUS_STARTED:
             return render(request, "registration/registration_forbidden.html", status=403)
