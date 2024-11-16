@@ -11,11 +11,17 @@ class UserRegistrationAdmin(admin.ModelAdmin):
     actions = ["approve_registrations", "deny_registrations"]
 
     def approve_registrations(self, request, queryset):
-        queryset.update(status=UserRegistration.STATUS_APPROVED)
+        for registration in queryset:
+            registration.status = UserRegistration.STATUS_APPROVED
+            registration.save()
+            
         self.message_user(request, f"{queryset.count()} registrations approved.")
 
     def deny_registrations(self, request, queryset):
-        queryset.update(status=UserRegistration.STATUS_DENIED)
+        for registration in queryset:
+            registration.status = UserRegistration.STATUS_DENIED
+            registration.save()
+
         self.message_user(request, f"{queryset.count()} registrations denied.")
 
     approve_registrations.short_description = "Approve selected registrations"
