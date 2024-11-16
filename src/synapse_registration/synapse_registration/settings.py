@@ -47,6 +47,8 @@ DEBUG = config.get("debug", False)
 
 ALLOWED_HOSTS = config.get("hosts")
 
+TRUST_PROXY = config.get("trust_proxy", False)
+
 if not ALLOWED_HOSTS:
     raise KeyError("Please specify a list of allowed hosts in the configuration file.")
 

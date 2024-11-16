@@ -52,11 +52,17 @@ class EmailInputView(FormView):
             return self.form_invalid(form)
 
         token = token_urlsafe(32)
+
+        if not settings.TRUST_PROXY:
+            ip_address = self.request.META.get("REMOTE_ADDR")
+        else:
+            ip_address = self.request.META.get("HTTP_X_FORWARDED_FOR")
+
         UserRegistration.objects.create(
             username=self.request.session["username"],
             email=email,
             token=token,
-            ip_address=self.request.META.get("REMOTE_ADDR"),
+            ip_address=ip_address,
         )
         verification_link = self.request.build_absolute_uri(
             reverse_lazy("verify_email", args=[token])

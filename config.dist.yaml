@@ -12,3 +12,4 @@ email:
   tls: true
 admin:
   email: admin@your.server
+trust_proxy: false
