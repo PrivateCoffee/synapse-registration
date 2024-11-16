@@ -94,6 +94,15 @@ class CompleteRegistrationView(FormView):
         )
         username = registration.username
 
+        # Assert one last time that the username is available
+        response = requests.get(
+            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
+            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+        )
+
+        if not response.json().get("available"):
+            return render(self.request, "registration/registration_forbidden.html")
+
         response = requests.put(
             f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
             json={
@@ -106,6 +115,26 @@ class CompleteRegistrationView(FormView):
         )
 
         if response.status_code in (200, 201):
+            # The "locked" field doesn't seem to work when creating a user, so we need to lock the user after creation
+            response = requests.put(
+                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
+                json={"locked": True},
+                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            )
+
+            response = requests.get(
+                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
+                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            )
+
+            if not response.json().get("locked"):
+                send_mail(
+                    "Locking Failed",
+                    f"Failed to lock the user {username}. Please lock the user manually if required.",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [settings.ADMIN_EMAIL],
+                )
+
             registration.status = UserRegistration.STATUS_REQUESTED
             registration.registration_reason = registration_reason
             registration.save()
