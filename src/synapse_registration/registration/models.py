@@ -23,6 +23,7 @@ class UserRegistration(models.Model):
     status = models.IntegerField(choices=STATUS_CHOICES, default=STATUS_STARTED)
     token = models.CharField(max_length=64, unique=True)
     email_verified = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.username
