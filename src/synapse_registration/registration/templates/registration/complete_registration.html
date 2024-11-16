@@ -21,6 +21,7 @@
             <div class="control">{{ form.registration_reason }}</div>
             <p class="help is-danger">{{ form.registration_reason.errors }}</p>
         </div>
+        <p class="help">Sending this form will create a Matrix account for you and reserve your username. However, you will not be able to log in until an administrator approves your registration. Please provide a reason for your registration to help us expedite the approval process.</p>
         <button type="submit" class="button is-link">Complete Registration</button>
     </form>
 {% endblock content %}
