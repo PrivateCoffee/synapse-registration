@@ -47,7 +47,7 @@ class EmailInputView(FormView):
         if UserRegistration.objects.filter(email=email).exists():
             form.add_error(
                 "email",
-                "This email is already registered. Please use a different email address.",
+                "There is already a pending registration for this email address. Please use a different email address.",
             )
             return self.form_invalid(form)
 
@@ -81,10 +81,14 @@ class VerifyEmailView(View):
         try:
             registration = UserRegistration.objects.get(token=token)
         except UserRegistration.DoesNotExist:
-            return render(request, "registration/registration_forbidden.html", status=403)
+            return render(
+                request, "registration/registration_forbidden.html", status=403
+            )
 
         if registration.status != UserRegistration.STATUS_STARTED:
-            return render(request, "registration/registration_forbidden.html", status=403)
+            return render(
+                request, "registration/registration_forbidden.html", status=403
+            )
 
         request.session["registration"] = registration.id
         registration.email_verified = True
@@ -112,7 +116,9 @@ class CompleteRegistrationView(FormView):
         )
 
         if not response.json().get("available"):
-            return render(self.request, "registration/registration_forbidden.html", status=403)
+            return render(
+                self.request, "registration/registration_forbidden.html", status=403
+            )
 
         response = requests.put(
             f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
@@ -134,7 +140,9 @@ class CompleteRegistrationView(FormView):
                 [settings.ADMIN_EMAIL],
             )
 
-            return render(self.request, "registration/registration_forbidden.html", status=403)
+            return render(
+                self.request, "registration/registration_forbidden.html", status=403
+            )
 
         if response.status_code == 201:
             # The "locked" field doesn't seem to work when creating a user, so we need to lock the user after creation
@@ -187,5 +195,7 @@ class CompleteRegistrationView(FormView):
             self.registration.status != UserRegistration.STATUS_STARTED
             or not self.registration.email_verified
         ):
-            return render(request, "registration/registration_forbidden.html", status=403)
+            return render(
+                request, "registration/registration_forbidden.html", status=403
+            )
         return super().dispatch(request, *args, **kwargs)
