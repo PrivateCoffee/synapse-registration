@@ -32,6 +32,7 @@ class RegistrationForm(forms.Form):
         )
     )
     registration_reason = forms.CharField(
+        min_length=30,
         widget=forms.Textarea(
             attrs={
                 "class": "textarea",
