@@ -11,6 +11,11 @@
             <div class="control">{{ form.email }}</div>
             <p class="help is-danger">{{ form.email.errors }}</p>
         </div>
+        <!-- Privacy notice -->
+        <p class="help">We will send you an email with a link to verify your email address.</p>
+        <p class="help">
+            By clicking the button below, you agree that we store your email address and the IP address of the device you are using to send this request for processing your registration.
+        </p>
         <button type="submit" class="button is-link">Verify Email</button>
     </form>
 {% endblock content %}
