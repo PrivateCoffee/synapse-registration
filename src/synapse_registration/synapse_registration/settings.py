@@ -69,6 +69,11 @@ SYNAPSE_SERVER = config["synapse"]["server"]
 SYNAPSE_ADMIN_TOKEN = config["synapse"]["admin_token"]
 MATRIX_DOMAIN = config["synapse"]["domain"]
 
+if "auto_join" in config:
+    AUTO_JOIN = config["auto_join"]
+else:
+    AUTO_JOIN = []
+
 response = requests.get(
     f"{SYNAPSE_SERVER}/_matrix/client/r0/account/whoami",
     headers={"Authorization": f"Bearer {SYNAPSE_ADMIN_TOKEN}"},

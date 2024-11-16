@@ -144,12 +144,14 @@ class CompleteRegistrationView(FormView):
             registration.status = UserRegistration.STATUS_REQUESTED
             registration.registration_reason = registration_reason
             registration.save()
+
             send_mail(
                 "New Registration Request",
                 f"Approve the new user {username}",
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.ADMIN_EMAIL],
             )
+
             return render(self.request, "registration/registration_pending.html")
 
         form.add_error(None, "Registration failed.")

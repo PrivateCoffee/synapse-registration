@@ -13,3 +13,5 @@ email:
 admin:
   email: admin@your.server
 trust_proxy: false
+auto_join:
+  - "!your_room_id:your.server"
