@@ -79,9 +79,11 @@ class EmailInputView(FormView):
 class VerifyEmailView(View):
     def get(self, request, token):
         registration = get_object_or_404(UserRegistration, token=token)
+
+        if registration.status != UserRegistration.STATUS_STARTED:
+            return render(request, "registration/registration_forbidden.html", status=403)
+
         request.session["registration"] = registration.id
-        if registration.email_verified:
-            return render(request, "registration/already_verified.html")
         registration.email_verified = True
         registration.save()
         return redirect("complete_registration")
@@ -107,7 +109,7 @@ class CompleteRegistrationView(FormView):
         )
 
         if not response.json().get("available"):
-            return render(self.request, "registration/registration_forbidden.html")
+            return render(self.request, "registration/registration_forbidden.html", status=403)
 
         response = requests.put(
             f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
@@ -120,7 +122,18 @@ class CompleteRegistrationView(FormView):
             headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
         )
 
-        if response.status_code in (200, 201):
+        if response.status_code == 200:
+            # Oops. This should never happen. It means that an existing user was altered.
+            send_mail(
+                "Critical Registration Error",
+                f"Something went horribly wrong. The existing user {username} was altered. Please investigate.",
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.ADMIN_EMAIL],
+            )
+
+            return render(self.request, "registration/registration_forbidden.html", status=403)
+
+        if response.status_code == 201:
             # The "locked" field doesn't seem to work when creating a user, so we need to lock the user after creation
             response = requests.put(
                 f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
@@ -145,6 +158,12 @@ class CompleteRegistrationView(FormView):
             registration.registration_reason = registration_reason
             registration.save()
 
+            try:
+                self.request.session.pop("registration")
+                self.request.session.pop("username")
+            except KeyError:
+                pass
+
             send_mail(
                 "New Registration Request",
                 f"Approve the new user {username}",
@@ -165,5 +184,5 @@ class CompleteRegistrationView(FormView):
             self.registration.status != UserRegistration.STATUS_REQUESTED
             or not self.registration.email_verified
         ):
-            return render(request, "registration/registration_forbidden.html")
+            return render(request, "registration/registration_forbidden.html", status=403)
         return super().dispatch(request, *args, **kwargs)

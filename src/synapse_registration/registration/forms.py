@@ -15,7 +15,7 @@ class UsernameForm(forms.Form):
         username = cleaned_data.get("username")
 
         if username.startswith("@") and username.endswith(f":{settings.MATRIX_DOMAIN}"):
-            username = username[1:-len(f":{settings.MATRIX_DOMAIN}")]
+            username = username[1 : -len(f":{settings.MATRIX_DOMAIN}")]
 
         if not username:
             self.add_error("username", "Username cannot be empty.")
@@ -45,13 +45,13 @@ class RegistrationForm(forms.Form):
         label="Password",
         widget=forms.PasswordInput(
             attrs={"class": "input", "placeholder": "Enter password"}
-        )
+        ),
     )
     password2 = forms.CharField(
         label="Confirm password",
         widget=forms.PasswordInput(
             attrs={"class": "input", "placeholder": "Re-enter password"}
-        )
+        ),
     )
     registration_reason = forms.CharField(
         min_length=30,
@@ -60,7 +60,7 @@ class RegistrationForm(forms.Form):
                 "class": "textarea",
                 "placeholder": "Why do you want to join our server? If you were referred by a current member, who referred you? If you found us through a different means, how did you find us?",
             }
-        )
+        ),
     )
 
     def clean(self):
