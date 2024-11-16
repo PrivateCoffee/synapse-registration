@@ -17,6 +17,7 @@ from django.core.management.utils import get_random_secret_key
 import os
 
 import yaml
+import requests
 
 CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
 
@@ -65,6 +66,16 @@ if not all(key in config["synapse"] for key in ["server", "admin_token", "domain
 SYNAPSE_SERVER = config["synapse"]["server"]
 SYNAPSE_ADMIN_TOKEN = config["synapse"]["admin_token"]
 MATRIX_DOMAIN = config["synapse"]["domain"]
+
+response = requests.get(
+    f"{SYNAPSE_SERVER}/_matrix/client/r0/account/whoami",
+    headers={"Authorization": f"Bearer {SYNAPSE_ADMIN_TOKEN}"},
+)
+
+if response.status_code != 200:
+    raise ConnectionError("Failed to connect to the Synapse server.")
+
+SYNAPSE_USER = response.json()["user_id"]
 
 
 # Application definition
@@ -172,6 +183,14 @@ if not all(key in config["email"] for key in ["host", "port", "username", "passw
         "Please specify the email host, port, username, and password in the configuration file."
     )
 
+if "admin" not in config:
+    raise KeyError("Please specify an admin configuration in the configuration file.")
+
+if "email" not in config["admin"]:
+    raise KeyError(
+        "Please specify an email address for the admin in the configuration file."
+    )
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config["email"]["host"]
 EMAIL_PORT = config["email"]["port"]
@@ -181,3 +200,4 @@ EMAIL_HOST_USER = config["email"]["username"]
 EMAIL_HOST_PASSWORD = config["email"]["password"]
 EMAIL_SUBJECT_PREFIX = config["email"].get("subject_prefix", "")
 DEFAULT_FROM_EMAIL = config["email"].get("from", EMAIL_HOST_USER)
+ADMIN_EMAIL = config["admin"]["email"]

@@ -14,36 +14,25 @@ def handle_status_change(sender, instance, created, **kwargs):
         status = instance.status
 
         if status == UserRegistration.STATUS_APPROVED:
-            send_mail(
-                "Registration Approved",
-                f"Congratulations, {instance.username}! Your registration at {settings.MATRIX_DOMAIN} has been approved.",
-                settings.DEFAULT_FROM_EMAIL,
-                [instance.email],
-            )
-
-            requests.put(
+            response = requests.put(
                 f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{instance.username}:{settings.MATRIX_DOMAIN}",
                 json={"locked": False},
                 headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
             )
 
-            response = requests.post(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/{settings.ADMIN_USER}/rooms?access_token={settings.SYNAPSE_ADMIN_TOKEN}",
-                json={"preset": "private_chat"},
-            )
+            if response.status_code != 200:
+                send_mail(
+                    "Unlocking Failed",
+                    f"Failed to unlock the user {instance.username}. Please unlock the user manually if required.",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [settings.ADMIN_EMAIL],
+                )
 
-            room_id = response.json()["room_id"]
-
-            response = requests.post(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/rooms/{room_id}/invite",
-                json={"user_id": f"@{instance.username}:{settings.MATRIX_DOMAIN}"},
-                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-            )
-
-            response = requests.post(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/rooms/{room_id}/send",
-                json={"msgtype": "m.text", "body": f"Welcome, {instance.username}!"},
-                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            send_mail(
+                "Registration Approved",
+                f"Congratulations, {instance.username}! Your registration at {settings.MATRIX_DOMAIN} has been approved.",
+                settings.DEFAULT_FROM_EMAIL,
+                [instance.email],
             )
 
         elif status == UserRegistration.STATUS_DENIED:
