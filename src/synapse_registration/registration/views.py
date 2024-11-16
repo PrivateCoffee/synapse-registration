@@ -184,7 +184,7 @@ class CompleteRegistrationView(FormView):
             UserRegistration, id=self.request.session.get("registration")
         )
         if (
-            self.registration.status != UserRegistration.STATUS_REQUESTED
+            self.registration.status != UserRegistration.STATUS_STARTED
             or not self.registration.email_verified
         ):
             return render(request, "registration/registration_forbidden.html", status=403)
