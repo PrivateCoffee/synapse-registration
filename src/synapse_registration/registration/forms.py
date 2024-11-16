@@ -20,11 +20,13 @@ class EmailForm(forms.Form):
 
 class RegistrationForm(forms.Form):
     password1 = forms.CharField(
+        label="Password",
         widget=forms.PasswordInput(
             attrs={"class": "input", "placeholder": "Enter password"}
         )
     )
     password2 = forms.CharField(
+        label="Confirm password",
         widget=forms.PasswordInput(
             attrs={"class": "input", "placeholder": "Re-enter password"}
         )
