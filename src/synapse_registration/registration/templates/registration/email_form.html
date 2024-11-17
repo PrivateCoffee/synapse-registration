@@ -16,6 +16,14 @@
         <p class="help">
             By clicking the button below, you agree that we store your email address and the IP address of the device you are using to send this request for processing your registration.
         </p>
+        {% if legal_links %}
+        <p class="help">
+            You also confirm that you have read and agree to the following documents, which govern the use of our Matrix server:
+            {% for link in legal_links %}
+                <a href="{{ link.url }}">{{ link.title }}</a>{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        </p>
+        {% endif %}
         <button type="submit" class="button is-link">Verify Email</button>
     </form>
 {% endblock content %}

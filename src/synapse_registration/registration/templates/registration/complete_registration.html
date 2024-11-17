@@ -24,6 +24,16 @@
         <p class="help">
             Sending this form will create a Matrix account for you and reserve your username. However, you will not be able to log in until an administrator approves your registration. Please provide a reason for your registration to help us expedite the approval process.
         </p>
+        {% if legal_links %}
+            <p class="help">
+                By completing this registration, you agree to the following:
+                <ul>
+                    {% for link in legal_links %}
+                        <li><a href="{{ link.url }}">{{ link.title }}</a></li>
+                    {% endfor %}
+                </ul>
+            </p>
+        {% endif %}
         <button type="submit" class="button is-link">Complete Registration</button>
     </form>
 {% endblock content %}

@@ -54,6 +54,7 @@ if not ALLOWED_HOSTS:
 
 CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS]
 
+LEGAL_LINKS = config.get("legal", [])
 
 # Synapse configuration
 

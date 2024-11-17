@@ -45,6 +45,11 @@ class EmailInputView(FormView):
     template_name = "registration/email_form.html"
     form_class = EmailForm
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["legal_links"] = settings.LEGAL_LINKS
+        return context
+
     def form_valid(self, form):
         email = form.cleaned_data["email"]
 
@@ -113,6 +118,11 @@ class CompleteRegistrationView(FormView):
     template_name = "registration/complete_registration.html"
     form_class = RegistrationForm
     success_url = reverse_lazy("registration_complete")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["legal_links"] = settings.LEGAL_LINKS
+        return context
 
     def form_valid(self, form):
         password = form.cleaned_data["password1"]

@@ -15,3 +15,6 @@ admin:
 trust_proxy: false
 auto_join:
   - "!your_room_id:your.server"
+legal:
+  - title: "Terms of Service"
+    url: "https://matrix.your.server/_matrix/consent"
