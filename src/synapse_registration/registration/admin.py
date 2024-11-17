@@ -4,6 +4,8 @@ from django.contrib.auth.models import Group
 from .models import UserRegistration
 
 admin.site.site_header = "Synapse Registration Administration"
+admin.site.site_title = "Synapse Registration Administration"
+admin.site.index_title = "Welcome to the Synapse Registration Administration"
 
 admin.site.unregister(Group)
 
