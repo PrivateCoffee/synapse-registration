@@ -1,8 +1,11 @@
 from django.contrib import admin
+from django.contrib.auth.models import Group
 
 from .models import UserRegistration
 
 admin.site.site_header = "Synapse Registration Administration"
+
+admin.site.unregister(Group)
 
 
 @admin.register(UserRegistration)
@@ -16,7 +19,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
         for registration in queryset:
             registration.status = UserRegistration.STATUS_APPROVED
             registration.save()
-            
+
         self.message_user(request, f"{queryset.count()} registrations approved.")
 
     def deny_registrations(self, request, queryset):
