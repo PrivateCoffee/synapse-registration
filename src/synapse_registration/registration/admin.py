@@ -2,6 +2,8 @@ from django.contrib import admin
 
 from .models import UserRegistration
 
+admin.site.site_header = "Synapse Registration Administration"
+
 
 @admin.register(UserRegistration)
 class UserRegistrationAdmin(admin.ModelAdmin):
