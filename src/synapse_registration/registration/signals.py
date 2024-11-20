@@ -7,6 +7,8 @@ from .models import UserRegistration
 
 import requests
 
+from smtplib import SMTPRecipientsRefused
+
 
 @receiver(post_save, sender=UserRegistration)
 def handle_status_change(sender, instance, created, **kwargs):
@@ -35,21 +37,17 @@ def handle_status_change(sender, instance, created, **kwargs):
                     headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
                 )
 
-            send_mail(
-                "Registration Approved",
-                f"Congratulations, {instance.username}! Your registration at {settings.MATRIX_DOMAIN} has been approved.",
-                settings.DEFAULT_FROM_EMAIL,
-                [instance.email],
-            )
+            try:
+                send_mail(
+                    "Registration Approved",
+                    f"Congratulations, {instance.username}! Your registration at {settings.MATRIX_DOMAIN} has been approved.",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [instance.email],
+                )
+            except SMTPRecipientsRefused:
+                pass
 
         elif status == UserRegistration.STATUS_DENIED:
-            send_mail(
-                "Registration Denied",
-                f"Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied.",
-                settings.DEFAULT_FROM_EMAIL,
-                [instance.email],
-            )
-
             response = requests.put(
                 f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{instance.username}:{settings.MATRIX_DOMAIN}",
                 json={"deactivated": True},
@@ -63,3 +61,13 @@ def handle_status_change(sender, instance, created, **kwargs):
                     settings.DEFAULT_FROM_EMAIL,
                     [settings.ADMIN_EMAIL],
                 )
+
+            try:
+                send_mail(
+                    "Registration Denied",
+                    f"Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied.",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [instance.email],
+                )
+            except SMTPRecipientsRefused:
+                pass

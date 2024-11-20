@@ -11,6 +11,7 @@ import requests
 
 from secrets import token_urlsafe
 from datetime import datetime, timedelta
+from smtplib import SMTPRecipientsRefused
 
 
 class LandingPageView(TemplateView):
@@ -76,22 +77,30 @@ class EmailInputView(FormView):
 
         token = token_urlsafe(32)
 
-        UserRegistration.objects.create(
+        registration = UserRegistration.objects.create(
             username=self.request.session["username"],
             email=email,
             token=token,
             ip_address=ip_address,
         )
+
         verification_link = self.request.build_absolute_uri(
             reverse_lazy("verify_email", args=[token])
         )
-        send_mail(
-            "Verify your email",
-            f"Click the link to verify your email: {verification_link}",
-            settings.DEFAULT_FROM_EMAIL,
-            [email],
-        )
-        return render(self.request, "registration/email_sent.html")
+
+        try:
+            send_mail(
+                "Verify your email",
+                f"Click the link to verify your email: {verification_link}",
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+            )
+            return render(self.request, "registration/email_sent.html")
+
+        except SMTPRecipientsRefused:
+            form.add_error("email", "Your email address is invalid, not accepting mail, or blocked by our mail server.")
+            registration.delete()
+            return self.form_invalid(form)
 
 
 class VerifyEmailView(View):
