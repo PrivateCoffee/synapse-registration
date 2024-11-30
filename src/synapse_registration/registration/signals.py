@@ -37,15 +37,21 @@ def handle_status_change(sender, instance, created, **kwargs):
                     headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
                 )
 
-            try:
-                send_mail(
-                    "Registration Approved",
-                    f"Congratulations, {instance.username}! Your registration at {settings.MATRIX_DOMAIN} has been approved.",
-                    settings.DEFAULT_FROM_EMAIL,
-                    [instance.email],
-                )
-            except SMTPRecipientsRefused:
-                pass
+            if instance.notify:
+                message = f"Congratulations, your registration request at {settings.MATRIX_DOMAIN} has been approved."
+
+                if instance.mod_message:
+                    message += f"\n\nMessage from moderator: {instance.mod_message}"
+
+                try:
+                    send_mail(
+                        "Registration Approved",
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [instance.email],
+                    )
+                except SMTPRecipientsRefused:
+                    pass
 
         elif status == UserRegistration.STATUS_DENIED:
             response = requests.put(
@@ -62,12 +68,18 @@ def handle_status_change(sender, instance, created, **kwargs):
                     [settings.ADMIN_EMAIL],
                 )
 
-            try:
-                send_mail(
-                    "Registration Denied",
-                    f"Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied.",
-                    settings.DEFAULT_FROM_EMAIL,
-                    [instance.email],
-                )
-            except SMTPRecipientsRefused:
-                pass
+            if instance.notify:
+                message = f"Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied."
+
+                if instance.mod_message:
+                    message += f"\n\nMessage from moderator: {instance.mod_message}"
+
+                try:
+                    send_mail(
+                        "Registration Denied",
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [instance.email],
+                    )
+                except SMTPRecipientsRefused:
+                    pass
