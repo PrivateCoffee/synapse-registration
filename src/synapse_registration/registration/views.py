@@ -209,7 +209,7 @@ class CompleteRegistrationView(FormView):
 
             send_mail(
                 "New Registration Request",
-                f"Approve the new user {username}",
+                f"Approve the new user {username}\n\nSupplied reason: {registration_reason}",
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.ADMIN_EMAIL],
             )
