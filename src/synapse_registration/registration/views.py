@@ -23,7 +23,7 @@ class RateLimitMixin:
         else:
             ip_address = request.META.get("HTTP_X_FORWARDED_FOR")
 
-        for block in IPBlock.objects.filter(expiry__gt=timezone.now()):
+        for block in IPBlock.objects.filter(expires__gt=timezone.now()):
             if ip_network(ip_address) in ip_network(f"{block.network}/{block.netmask}"):
                 return render(request, "registration/ratelimit.html", status=429)
 
