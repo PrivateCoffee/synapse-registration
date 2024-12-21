@@ -29,3 +29,39 @@ class UserRegistration(models.Model):
 
     def __str__(self):
         return self.username
+
+
+class IPBlock(models.Model):
+    network = models.GenericIPAddressField()
+    netmask = models.SmallIntegerField(default=-1)
+    reason = models.TextField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    expires = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.netmask == -1:
+            self.netmask = 32 if self.network.version == 4 else 128
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.network}/{self.netmask}"
+
+
+class EmailBlock(models.Model):
+    regex = models.CharField(max_length=1024)
+    reason = models.TextField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    expires = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.email
+
+
+class UsernameRule(models.Model):
+    regex = models.CharField(max_length=1024)
+    reason = models.TextField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    expires = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.regex

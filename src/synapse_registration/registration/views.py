@@ -3,15 +3,31 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
 
 from .forms import UsernameForm, EmailForm, RegistrationForm
-from .models import UserRegistration
+from .models import UserRegistration, IPBlock
 
 import requests
 
 from secrets import token_urlsafe
-from datetime import datetime, timedelta
+from datetime import timedelta
 from smtplib import SMTPRecipientsRefused
+from ipaddress import ip_network
+
+
+class RateLimitMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if not settings.TRUST_PROXY:
+            ip_address = request.META.get("REMOTE_ADDR")
+        else:
+            ip_address = request.META.get("HTTP_X_FORWARDED_FOR")
+
+        for block in IPBlock.objects.filter(expiry__gt=timezone.now()):
+            if ip_network(ip_address) in ip_network(f"{block.network}/{block.netmask}"):
+                return render(request, "registration/ratelimit.html", status=429)
+
+        return super().dispatch(request, *args, **kwargs)
 
 
 class LandingPageView(TemplateView):
@@ -22,7 +38,7 @@ class ErrorPageView(TemplateView):
     template_name = "error_page.html"
 
 
-class CheckUsernameView(FormView):
+class CheckUsernameView(RateLimitMixin, FormView):
     template_name = "registration/username_form.html"
     form_class = UsernameForm
     success_url = reverse_lazy("email_input")
@@ -42,7 +58,7 @@ class CheckUsernameView(FormView):
             return self.form_invalid(form)
 
 
-class EmailInputView(FormView):
+class EmailInputView(RateLimitMixin, FormView):
     template_name = "registration/email_form.html"
     form_class = EmailForm
 
@@ -69,7 +85,7 @@ class EmailInputView(FormView):
         if (
             UserRegistration.objects.filter(
                 ip_address=ip_address,
-                timestamp__gte=datetime.now() - timedelta(hours=24),
+                timestamp__gte=timezone.now() - timedelta(hours=24),
             ).count()
             >= 5
         ):
@@ -98,12 +114,15 @@ class EmailInputView(FormView):
             return render(self.request, "registration/email_sent.html")
 
         except SMTPRecipientsRefused:
-            form.add_error("email", "Your email address is invalid, not accepting mail, or blocked by our mail server.")
+            form.add_error(
+                "email",
+                "Your email address is invalid, not accepting mail, or blocked by our mail server.",
+            )
             registration.delete()
             return self.form_invalid(form)
 
 
-class VerifyEmailView(View):
+class VerifyEmailView(RateLimitMixin, View):
     def get(self, request, token):
         try:
             registration = UserRegistration.objects.get(token=token)
@@ -123,7 +142,7 @@ class VerifyEmailView(View):
         return redirect("complete_registration")
 
 
-class CompleteRegistrationView(FormView):
+class CompleteRegistrationView(RateLimitMixin, FormView):
     template_name = "registration/complete_registration.html"
     form_class = RegistrationForm
     success_url = reverse_lazy("registration_complete")
