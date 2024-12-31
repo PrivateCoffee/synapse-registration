@@ -16,10 +16,13 @@ admin.site.unregister(Group)
 
 @admin.register(UserRegistration)
 class UserRegistrationAdmin(admin.ModelAdmin):
-    list_display = ("username", "email", "email_verified", "status_symbol", "timestamp", "ip_address")
+    list_display = ("username", "email", "email_verified_symbol", "status_symbol", "timestamp", "ip_address")
     list_filter = ("status", "email_verified")
     search_fields = ("username", "email", "ip_address")
     actions = ["approve_registrations", "deny_registrations"]
+
+    def email_verified_symbol(self, obj):
+        return "✅" if obj.email_verified else "❌"
 
     def status_symbol(self, obj):
         if obj.status == UserRegistration.STATUS_APPROVED:
