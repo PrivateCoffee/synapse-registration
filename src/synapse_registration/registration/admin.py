@@ -32,6 +32,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
         else:
             return f"⌛ ({obj.get_status_display()})"
 
+    email_verified_symbol.short_description = "Email verified"
     status_symbol.short_description = "Status"
 
     def approve_registrations(self, request, queryset):
