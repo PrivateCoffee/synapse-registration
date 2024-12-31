@@ -27,7 +27,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
         elif obj.status == UserRegistration.STATUS_DENIED:
             return "❌"
         else:
-            return f"⌛ ({obj.status})"
+            return f"⌛ ({obj.get_status_display()})"
 
     status_symbol.short_description = "Status"
 
