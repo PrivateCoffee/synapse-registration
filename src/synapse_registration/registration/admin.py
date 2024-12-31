@@ -16,7 +16,7 @@ admin.site.unregister(Group)
 
 @admin.register(UserRegistration)
 class UserRegistrationAdmin(admin.ModelAdmin):
-    list_display = ("username", "email", "email_verified", "status", "ip_address")
+    list_display = ("username", "email", "email_verified", "status", "timestamp", "ip_address")
     list_filter = ("status", "email_verified")
     search_fields = ("username", "email", "ip_address")
     actions = ["approve_registrations", "deny_registrations"]
