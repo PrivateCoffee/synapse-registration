@@ -24,7 +24,7 @@ def handle_status_change(sender, instance, created, **kwargs):
 
             if response.status_code != 200:
                 send_mail(
-                    "Unlocking Failed",
+                    f"[{settings.MATRIX_DOMAIN}] Unlocking Failed",
                     f"Failed to unlock the user {instance.username}. Please unlock the user manually if required.",
                     settings.DEFAULT_FROM_EMAIL,
                     [settings.ADMIN_EMAIL],
@@ -38,14 +38,20 @@ def handle_status_change(sender, instance, created, **kwargs):
                 )
 
             if instance.notify:
-                message = f"Congratulations, your registration request at {settings.MATRIX_DOMAIN} has been approved."
+                message = f"""Hi {instance.username},
+                
+                Congratulations, your registration request at {settings.MATRIX_DOMAIN} has been approved.
+                
+                You can now login to your account and start chatting with other users. Have fun! 🎉"""
 
                 if instance.mod_message:
                     message += f"\n\nMessage from moderator: {instance.mod_message}"
 
+                message += f"\n\n{settings.MATRIX_DOMAIN} Team"
+
                 try:
                     send_mail(
-                        "Registration Approved",
+                        f"[{settings.MATRIX_DOMAIN}] Matrix Registration Approved",
                         message,
                         settings.DEFAULT_FROM_EMAIL,
                         [instance.email],
@@ -62,21 +68,25 @@ def handle_status_change(sender, instance, created, **kwargs):
 
             if response.status_code != 200:
                 send_mail(
-                    "Deactivation Failed",
+                    f"[{settings.MATRIX_DOMAIN}] Deactivation Failed",
                     f"Failed to deactivate the user {instance.username}. Please deactivate the user manually if required.",
                     settings.DEFAULT_FROM_EMAIL,
                     [settings.ADMIN_EMAIL],
                 )
 
             if instance.notify:
-                message = f"Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied."
+                message = f"""Hi,
+                
+                Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied."""
 
                 if instance.mod_message:
                     message += f"\n\nMessage from moderator: {instance.mod_message}"
 
+                message += f"\n\n{settings.MATRIX_DOMAIN} Team"
+
                 try:
                     send_mail(
-                        "Registration Denied",
+                        f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied",
                         message,
                         settings.DEFAULT_FROM_EMAIL,
                         [instance.email],

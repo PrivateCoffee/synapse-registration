@@ -73,7 +73,7 @@ class EmailInputView(RateLimitMixin, FormView):
         if UserRegistration.objects.filter(email=email).exists():
             form.add_error(
                 "email",
-                "There is already a pending registration for this email address. Please use a different email address.",
+                "There is already a pending or recently accepted registration for this email address. Please get in touch if you need multiple accounts.",
             )
             return self.form_invalid(form)
 
@@ -106,8 +106,17 @@ class EmailInputView(RateLimitMixin, FormView):
 
         try:
             send_mail(
-                "Verify your email",
-                f"Click the link to verify your email: {verification_link}",
+                f"[{settings.MATRIX_DOMAIN}] Verify your email",
+                f"""Hi,
+                
+                Someone (hopefully you) requested a new account at {settings.MATRIX_DOMAIN}. If this was you, please click the link below to verify your email address.
+
+                {verification_link}
+                
+                Thanks!
+
+                {settings.MATRIX_DOMAIN} Team
+                """,
                 settings.DEFAULT_FROM_EMAIL,
                 [email],
             )
@@ -185,7 +194,7 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
         if response.status_code == 200:
             # Oops. This should never happen. It means that an existing user was altered.
             send_mail(
-                "Critical Registration Error",
+                f"[{settings.MATRIX_DOMAIN}] Critical Registration Error",
                 f"Something went horribly wrong. The existing user {username} was altered. Please investigate.",
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.ADMIN_EMAIL],
@@ -210,7 +219,7 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
 
             if not response.json().get("locked"):
                 send_mail(
-                    "Locking Failed",
+                    f"[{settings.MATRIX_DOMAIN}] Locking Failed",
                     f"Failed to lock the user {username}. Please lock the user manually if required.",
                     settings.DEFAULT_FROM_EMAIL,
                     [settings.ADMIN_EMAIL],
@@ -227,7 +236,7 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
                 pass
 
             send_mail(
-                "New Registration Request",
+                f"[{settings.MATRIX_DOMAIN}] New Registration Request",
                 f"Approve the new user {username}\n\nSupplied reason: {registration_reason}",
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.ADMIN_EMAIL],
