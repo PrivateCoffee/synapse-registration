@@ -30,7 +30,30 @@ class RateLimitMixin:
         return super().dispatch(request, *args, **kwargs)
 
 
-class LandingPageView(TemplateView):
+class CleanupMixin:
+    def dispatch(self, request, *args, **kwargs):
+        # Remove all registrations that are still in the "started" state after 48 hours
+        UserRegistration.objects.filter(
+            status=UserRegistration.STATUS_STARTED,
+            timestamp__lt=timezone.now() - timedelta(hours=48),
+        ).delete()
+
+        # Remove all registrations that are denied or approved after 30 days
+        UserRegistration.objects.filter(
+            status__in=[
+                UserRegistration.STATUS_DENIED,
+                UserRegistration.STATUS_APPROVED,
+            ],
+            timestamp__lt=timezone.now() - timedelta(days=30),
+        ).delete()
+
+        # Remove all IP blocks that have expired
+        IPBlock.objects.filter(expires__lt=timezone.now()).delete()
+
+        return super().dispatch(request, *args, **kwargs)
+
+
+class LandingPageView(CleanupMixin, TemplateView):
     template_name = "landing_page.html"
 
 
