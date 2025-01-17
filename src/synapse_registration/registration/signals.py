@@ -7,6 +7,9 @@ from .models import UserRegistration
 
 import requests
 
+import hashlib
+import hmac
+
 from smtplib import SMTPRecipientsRefused
 from textwrap import dedent
 
@@ -36,6 +39,27 @@ def handle_status_change(sender, instance, created, **kwargs):
                     f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/join/{room}",
                     json={"user_id": f"@{instance.username}:{settings.MATRIX_DOMAIN}"},
                     headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+                )
+
+            if settings.POLICY_VERSION and settings.FORM_SECRET:
+                userhmac = hmac.HMAC(
+                    settings.FORM_SECRET.encode("utf-8"),
+                    instance.username.encode("utf-8"),
+                    digestmod=hashlib.sha256,
+                ).hexdigest()
+
+                form_data = {
+                    "v": settings.POLICY_VERSION,
+                    "u": instance.username,
+                    "h": userhmac,
+                }
+
+                response = requests.post(
+                    f"{settings.SYNAPSE_SERVER}/_matrix/consent",
+                    data=form_data,
+                    headers={
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
                 )
 
             if instance.notify:
