@@ -8,6 +8,7 @@ from .models import UserRegistration
 import requests
 
 from smtplib import SMTPRecipientsRefused
+from textwrap import dedent
 
 
 @receiver(post_save, sender=UserRegistration)
@@ -40,9 +41,9 @@ def handle_status_change(sender, instance, created, **kwargs):
             if instance.notify:
                 message = f"""Hi {instance.username},
                 
-                Congratulations, your registration request at {settings.MATRIX_DOMAIN} has been approved.
-                
-                You can now login to your account and start chatting with other users. Have fun! 🎉"""
+                    Congratulations, your registration request at {settings.MATRIX_DOMAIN} has been approved.
+                    
+                    You can now login to your account and start chatting with other users. Have fun! 🎉"""
 
                 if instance.mod_message:
                     message += f"\n\nMessage from moderator: {instance.mod_message}"
@@ -52,7 +53,7 @@ def handle_status_change(sender, instance, created, **kwargs):
                 try:
                     send_mail(
                         f"[{settings.MATRIX_DOMAIN}] Matrix Registration Approved",
-                        message,
+                        dedent(message),
                         settings.DEFAULT_FROM_EMAIL,
                         [instance.email],
                     )
@@ -87,7 +88,7 @@ def handle_status_change(sender, instance, created, **kwargs):
                 try:
                     send_mail(
                         f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied",
-                        message,
+                        dedent(message),
                         settings.DEFAULT_FROM_EMAIL,
                         [instance.email],
                     )

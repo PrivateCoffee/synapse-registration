@@ -14,6 +14,7 @@ from secrets import token_urlsafe
 from datetime import timedelta
 from smtplib import SMTPRecipientsRefused
 from ipaddress import ip_network
+from textwrap import dedent
 
 
 class RateLimitMixin:
@@ -128,9 +129,7 @@ class EmailInputView(RateLimitMixin, FormView):
         )
 
         try:
-            send_mail(
-                f"[{settings.MATRIX_DOMAIN}] Verify your email",
-                f"""Hi,
+            message = f"""Hi,
                 
                 Someone (hopefully you) requested a new account at {settings.MATRIX_DOMAIN}. If this was you, please click the link below to verify your email address.
 
@@ -139,7 +138,11 @@ class EmailInputView(RateLimitMixin, FormView):
                 Thanks!
 
                 {settings.MATRIX_DOMAIN} Team
-                """,
+                """
+
+            send_mail(
+                f"[{settings.MATRIX_DOMAIN}] Verify your email",
+                dedent(message),
                 settings.DEFAULT_FROM_EMAIL,
                 [email],
             )
