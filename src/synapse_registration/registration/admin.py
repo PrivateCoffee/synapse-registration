@@ -74,7 +74,6 @@ def get_app_list(self, request, app_label=None):
         app_list.sort(key=lambda x: x["app_label"] != "registration")  # False < True
 
     app_list[0]["models"].sort(key=lambda x: x["object_name"] != "UserRegistration")
-    print(app_list)
     return app_list
 
 
