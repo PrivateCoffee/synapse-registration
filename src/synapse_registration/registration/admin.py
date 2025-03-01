@@ -7,10 +7,6 @@ admin.site.site_header = "Synapse Registration Administration"
 admin.site.site_title = "Synapse Registration Administration"
 admin.site.index_title = "Welcome to the Synapse Registration Administration"
 
-admin.site.register(EmailBlock)
-admin.site.register(IPBlock)
-admin.site.register(UsernameRule)
-
 admin.site.unregister(Group)
 
 
@@ -60,6 +56,12 @@ class UserRegistrationAdmin(admin.ModelAdmin):
     deny_registrations.short_description = "Deny selected registrations"
 
 
+admin.site.register(EmailBlock)
+admin.site.register(IPBlock)
+admin.site.register(UsernameRule)
+
+# Monkey patching to ensure the registration app is always displayed first in the admin panel
+
 admin.AdminSite._get_app_list = admin.AdminSite.get_app_list
 
 
@@ -69,7 +71,10 @@ def get_app_list(self, request, app_label=None):
     """
     app_list = admin.AdminSite._get_app_list(self, request, app_label)
     if app_list:
-        app_list.sort(key=lambda x: x["name"] != "Registration")  # False < True
+        app_list.sort(key=lambda x: x["app_label"] != "registration")  # False < True
+
+    app_list[0]["models"].sort(key=lambda x: x["object_name"] != "UserRegistration")
+    print(app_list)
     return app_list
 
 
