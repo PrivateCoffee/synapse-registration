@@ -16,7 +16,14 @@ admin.site.unregister(Group)
 
 @admin.register(UserRegistration)
 class UserRegistrationAdmin(admin.ModelAdmin):
-    list_display = ("username", "email", "email_verified_symbol", "status_symbol", "timestamp", "ip_address")
+    list_display = (
+        "username",
+        "email",
+        "email_verified_symbol",
+        "status_symbol",
+        "timestamp",
+        "ip_address",
+    )
     list_filter = ("status", "email_verified")
     search_fields = ("username", "email", "ip_address")
     actions = ["approve_registrations", "deny_registrations"]
@@ -51,3 +58,19 @@ class UserRegistrationAdmin(admin.ModelAdmin):
 
     approve_registrations.short_description = "Approve selected registrations"
     deny_registrations.short_description = "Deny selected registrations"
+
+
+admin.AdminSite._get_app_list = admin.AdminSite.get_app_list
+
+
+def get_app_list(self, request, app_label=None):
+    """
+    Ensures that the registration app is always displayed first in the admin panel.
+    """
+    app_list = admin.AdminSite._get_app_list(self, request, app_label)
+    if app_list:
+        app_list.sort(key=lambda x: x["name"] != "Registration")  # False < True
+    return app_list
+
+
+admin.AdminSite.get_app_list = get_app_list
