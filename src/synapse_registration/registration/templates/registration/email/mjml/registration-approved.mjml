@@ -47,8 +47,8 @@
         </mj-text>
 
         <mj-text font-size="16px" line-height="24px" color="#374151">
-          You can now log in to your account using the credentials you provided
-          during registration.
+          You can now log in to your account using your username {{ username }}
+          and the password you provided during registration.
         </mj-text>
 
         {% if mod_message %}
