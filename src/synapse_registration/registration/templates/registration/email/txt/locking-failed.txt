@@ -1,0 +1,7 @@
+Hi,
+
+A user started a registration for the username {{ username }} on the Matrix server at {{ matrix_domain }}.
+
+However, locking the account failed. Please check the server logs for more information and lock the account manually if necessary.
+
+Thanks!

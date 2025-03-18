@@ -1,0 +1,7 @@
+Hi,
+
+You denied the registration request for {{ username }} on the Matrix server at {{ matrix_domain }}.
+
+However, the deactivation of the account failed. Please check the server logs for more information and deactivate the account manually if necessary.
+
+Thanks!

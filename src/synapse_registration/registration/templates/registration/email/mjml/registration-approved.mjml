@@ -98,6 +98,18 @@
         </mj-text>
       </mj-column>
     </mj-section>
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text
+          font-size="12px"
+          line-height="16px"
+          color="#6b7280"
+          align="center"
+        >
+          This is an automated notification. Please do not reply to this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
   </mj-body>
 </mjml>
 {% endmjml %}

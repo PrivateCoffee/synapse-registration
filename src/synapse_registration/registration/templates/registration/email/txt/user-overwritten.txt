@@ -1,0 +1,7 @@
+Hi,
+
+You approved the registration request for {{ username }} on the Matrix server at {{ matrix_domain }}.
+
+However, it appears that an existing account with the username {{ username }} already exists on the server and has been overwritten. Please check the server logs for more information and take appropriate action.
+
+Thanks!

@@ -1,7 +1,7 @@
 {% load mjml %} {% mjml %}
 <mjml>
   <mj-head>
-    <mj-title>Registration Request Denied</mj-title>
+    <mj-title>Action Required: Account Locking Failed</mj-title>
     <mj-font
       name="Roboto"
       href="https://googledonts.private.coffee/css?family=Roboto:300,400,500"
@@ -31,7 +31,7 @@
           color="#111827"
           padding-bottom="20px"
         >
-          Registration Request Denied
+          Action Required: Account Locking Failed
         </mj-text>
 
         <mj-text font-size="16px" line-height="24px" color="#374151">
@@ -39,24 +39,15 @@
         </mj-text>
 
         <mj-text font-size="16px" line-height="24px" color="#374151">
-          Sorry, your registration request for the Matrix server at
-          <strong>{{ matrix_domain }}</strong> has been denied.
+          A user started a registration for the username
+          <strong>{{ username }}</strong> on the Matrix server at
+          <strong>{{ matrix_domain }}</strong>.
         </mj-text>
 
-        {% if mod_message %}
-        <mj-section
-          background-color="#f3f4f6"
-          padding="15px"
-          border-radius="6px"
-        >
-          <mj-column>
-            <mj-text font-size="16px" line-height="24px" color="#374151">
-              <strong>Message from moderator:</strong><br />
-              {{ mod_message }}
-            </mj-text>
-          </mj-column>
-        </mj-section>
-        {% endif %}
+        <mj-text font-size="16px" line-height="24px" color="#ef4444">
+          However, locking the account failed. Please check the server logs for
+          more information and lock the account manually if necessary.
+        </mj-text>
 
         <mj-text
           font-size="16px"
@@ -64,19 +55,11 @@
           color="#374151"
           padding-top="20px"
         >
-          Thank you for your interest in our platform.
-        </mj-text>
-
-        <mj-text
-          font-size="16px"
-          line-height="24px"
-          color="#374151"
-          padding-top="10px"
-        >
-          The {{ matrix_domain }} Team
+          Thanks!
         </mj-text>
       </mj-column>
     </mj-section>
+
     <mj-section padding="20px 0">
       <mj-column>
         <mj-text
@@ -85,7 +68,8 @@
           color="#6b7280"
           align="center"
         >
-          This is an automated notification. Please do not reply to this email.
+          This is an automated admin notification. Please do not reply to this
+          email.
         </mj-text>
       </mj-column>
     </mj-section>

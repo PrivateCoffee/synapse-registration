@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 
@@ -12,7 +12,6 @@ import hashlib
 import hmac
 
 from smtplib import SMTPRecipientsRefused
-from textwrap import dedent
 
 
 @receiver(post_save, sender=UserRegistration)
@@ -28,12 +27,38 @@ def handle_status_change(sender, instance, created, **kwargs):
             )
 
             if response.status_code != 200:
-                send_mail(
-                    f"[{settings.MATRIX_DOMAIN}] Unlocking Failed",
-                    f"Failed to unlock the user {instance.username}. Please unlock the user manually if required.",
+                context = {
+                    "matrix_domain": settings.MATRIX_DOMAIN,
+                    "username": instance.username,
+                }
+
+                subject = f"[{settings.MATRIX_DOMAIN}] Unlock Failed"
+
+                text_content = render_to_string(
+                    "registration/email/txt/unlocking-failed.txt", context
+                )
+
+                msg = EmailMultiAlternatives(
+                    subject,
+                    text_content,
                     settings.DEFAULT_FROM_EMAIL,
                     [settings.ADMIN_EMAIL],
                 )
+
+                try:
+                    html_content = render_to_string(
+                        "registration/email/mjml/unlocking-failed.mjml", context
+                    )
+
+                    msg.attach_alternative(html_content, "text/html")
+
+                except Exception:
+                    pass
+
+                try:
+                    msg.send()
+                except SMTPRecipientsRefused:
+                    pass
 
             for room in settings.AUTO_JOIN:
                 response = requests.post(
@@ -103,12 +128,38 @@ def handle_status_change(sender, instance, created, **kwargs):
             )
 
             if response.status_code != 200:
-                send_mail(
-                    f"[{settings.MATRIX_DOMAIN}] Deactivation Failed",
-                    f"Failed to deactivate the user {instance.username}. Please deactivate the user manually if required.",
+                context = {
+                    "matrix_domain": settings.MATRIX_DOMAIN,
+                    "username": instance.username,
+                }
+
+                subject = f"[{settings.MATRIX_DOMAIN}] Deactivation Failed"
+
+                text_content = render_to_string(
+                    "registration/email/txt/deactivation-failed.txt", context
+                )
+
+                msg = EmailMultiAlternatives(
+                    subject,
+                    text_content,
                     settings.DEFAULT_FROM_EMAIL,
                     [settings.ADMIN_EMAIL],
                 )
+
+                try:
+                    html_content = render_to_string(
+                        "registration/email/mjml/deactivation-failed.mjml", context
+                    )
+
+                    msg.attach_alternative(html_content, "text/html")
+
+                except Exception:
+                    pass
+
+                try:
+                    msg.send()
+                except SMTPRecipientsRefused:
+                    pass
 
             if instance.notify:
                 context = {

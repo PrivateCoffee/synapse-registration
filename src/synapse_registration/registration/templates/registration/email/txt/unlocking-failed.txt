@@ -1,0 +1,7 @@
+Hi,
+
+You approved the registration request for {{ username }} on the Matrix server at {{ matrix_domain }}.
+
+However, unlocking the account failed. Please check the server logs for more information and unlock the account manually if necessary.
+
+Thanks!

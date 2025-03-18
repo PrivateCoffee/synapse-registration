@@ -1,7 +1,7 @@
 from django.views.generic import FormView, View, TemplateView
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils import timezone
@@ -15,6 +15,10 @@ from secrets import token_urlsafe
 from datetime import timedelta
 from smtplib import SMTPRecipientsRefused
 from ipaddress import ip_network
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimitMixin:
@@ -176,11 +180,13 @@ class VerifyEmailView(RateLimitMixin, View):
         try:
             registration = UserRegistration.objects.get(token=token)
         except UserRegistration.DoesNotExist:
+            logger.warning(f"Invalid token: {token}")
             return render(
                 request, "registration/registration_forbidden.html", status=403
             )
 
         if registration.status != UserRegistration.STATUS_STARTED:
+            logger.warning(f"Invalid status: {registration.status}")
             return render(
                 request, "registration/registration_forbidden.html", status=403
             )
@@ -216,6 +222,7 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
         )
 
         if not response.json().get("available"):
+            logger.warning(f"Username not available: {username}")
             return render(
                 self.request, "registration/registration_forbidden.html", status=403
             )
@@ -233,12 +240,40 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
 
         if response.status_code == 200:
             # Oops. This should never happen. It means that an existing user was altered.
-            send_mail(
-                f"[{settings.MATRIX_DOMAIN}] Critical Registration Error",
-                f"Something went horribly wrong. The existing user {username} was altered. Please investigate.",
+            context = {
+                "matrix_domain": settings.MATRIX_DOMAIN,
+                "username": username,
+            }
+
+            subject = f"[{settings.MATRIX_DOMAIN}] Urgent: User overwritten"
+
+            text_content = render_to_string(
+                "registration/email/txt/user-overwritten.txt", context
+            )
+
+            msg = EmailMultiAlternatives(
+                subject,
+                text_content,
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.ADMIN_EMAIL],
             )
+
+            try:
+                html_content = render_to_string(
+                    "registration/email/mjml/user-overwritten.mjml", context
+                )
+
+                msg.attach_alternative(html_content, "text/html")
+
+            except Exception as e:
+                logger.error(f"Failed to render MJML: {e}")
+
+            try:
+                msg.send()
+            except SMTPRecipientsRefused as e:
+                logger.error(f"Failed to send email: {e}")
+
+            logger.error(f"User overwritten: {username}")
 
             return render(
                 self.request, "registration/registration_forbidden.html", status=403
@@ -258,12 +293,38 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
             )
 
             if not response.json().get("locked"):
-                send_mail(
-                    f"[{settings.MATRIX_DOMAIN}] Locking Failed",
-                    f"Failed to lock the user {username}. Please lock the user manually if required.",
+                context = {
+                    "matrix_domain": settings.MATRIX_DOMAIN,
+                    "username": username,
+                }
+
+                subject = f"[{settings.MATRIX_DOMAIN}] Locking Failed"
+
+                text_content = render_to_string(
+                    "registration/email/txt/locking-failed.txt", context
+                )
+
+                msg = EmailMultiAlternatives(
+                    subject,
+                    text_content,
                     settings.DEFAULT_FROM_EMAIL,
                     [settings.ADMIN_EMAIL],
                 )
+
+                try:
+                    html_content = render_to_string(
+                        "registration/email/mjml/locking-failed.mjml", context
+                    )
+
+                    msg.attach_alternative(html_content, "text/html")
+
+                except Exception as e:
+                    logger.error(f"Failed to render MJML: {e}")
+
+                try:
+                    msg.send()
+                except SMTPRecipientsRefused as e:
+                    logger.error(f"Failed to send email: {e}")
 
             registration.status = UserRegistration.STATUS_REQUESTED
             registration.registration_reason = registration_reason
@@ -275,12 +336,42 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
             except KeyError:
                 pass
 
-            send_mail(
-                f"[{settings.MATRIX_DOMAIN}] New Registration Request",
-                f"Approve the new user {username}\n\nSupplied reason: {registration_reason}",
+            admin_url = self.request.build_absolute_uri(reverse_lazy("admin:index"))
+
+            context = {
+                "matrix_domain": settings.MATRIX_DOMAIN,
+                "username": username,
+                "email": registration.email,
+                "registration_reason": registration_reason,
+                "logo": getattr(settings, "LOGO_URL", None),
+                "admin_url": admin_url,
+            }
+
+            subject = f"[{settings.MATRIX_DOMAIN}] Registration Requested"
+
+            text_content = render_to_string(
+                "registration/email/txt/new-registration.txt", context
+            )
+
+            msg = EmailMultiAlternatives(
+                subject,
+                text_content,
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.ADMIN_EMAIL],
             )
+
+            try:
+                html_content = render_to_string(
+                    "registration/email/mjml/new-registration.mjml", context
+                )
+                msg.attach_alternative(html_content, "text/html")
+            except Exception as e:
+                logger.error(f"Failed to render MJML: {e}")
+
+            try:
+                msg.send()
+            except SMTPRecipientsRefused as e:
+                logger.error(f"Failed to send email: {e}")
 
             return render(self.request, "registration/registration_pending.html")
 
@@ -295,6 +386,8 @@ class CompleteRegistrationView(RateLimitMixin, FormView):
             self.registration.status != UserRegistration.STATUS_STARTED
             or not self.registration.email_verified
         ):
+            logger.warning(f"Invalid status: {self.registration.status}")
+
             return render(
                 request, "registration/registration_forbidden.html", status=403
             )

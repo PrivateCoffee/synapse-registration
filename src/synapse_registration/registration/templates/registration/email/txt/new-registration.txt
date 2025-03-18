@@ -1,0 +1,17 @@
+Hi there,
+
+A new user has requested registration on {{ matrix_domain }}.
+
+Username: {{ username }}
+Email: {{ email }}
+
+Supplied reason for registration:
+{{ registration_reason }}
+
+Please review this request at your earliest convenience.
+
+You can approve or deny this request by visiting:
+{{ admin_url }}
+
+Thanks,
+{{ matrix_domain }} Admin System
