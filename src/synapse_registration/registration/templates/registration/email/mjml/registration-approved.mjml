@@ -1,0 +1,103 @@
+{% load mjml %} {% mjml %}
+<mjml>
+  <mj-head>
+    <mj-title>Registration Request Approved</mj-title>
+    <mj-font
+      name="Roboto"
+      href="https://googledonts.private.coffee/css?family=Roboto:300,400,500"
+    />
+    <mj-attributes>
+      <mj-all font-family="Roboto, Arial, sans-serif" />
+    </mj-attributes>
+    <mj-style>
+      .link-nostyle { color: inherit; text-decoration: none }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f3f4f6">
+    {% if logo %}
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-image
+          width="120px"
+          src="{{ logo }}"
+          alt="{{ matrix_domain }} Logo"
+        />
+      </mj-column>
+    </mj-section>
+    {% endif %}
+
+    <mj-section background-color="#ffffff" padding="20px" border-radius="8px">
+      <mj-column>
+        <mj-text
+          font-size="22px"
+          font-weight="500"
+          color="#111827"
+          padding-bottom="20px"
+        >
+          Registration Approved!
+        </mj-text>
+
+        <mj-text font-size="16px" line-height="24px" color="#374151">
+          Hi there,
+        </mj-text>
+
+        <mj-text font-size="16px" line-height="24px" color="#374151">
+          Good news! Your registration request for the Matrix server at
+          <strong>{{ matrix_domain }}</strong> has been approved.
+        </mj-text>
+
+        <mj-text font-size="16px" line-height="24px" color="#374151">
+          You can now log in to your account using the credentials you provided
+          during registration.
+        </mj-text>
+
+        {% if mod_message %}
+        <mj-section
+          background-color="#f0fdf4"
+          padding="15px"
+          border-radius="6px"
+        >
+          <mj-column>
+            <mj-text font-size="16px" line-height="24px" color="#374151">
+              <strong>Message from moderator:</strong><br />
+              {{ mod_message }}
+            </mj-text>
+          </mj-column>
+        </mj-section>
+        {% endif %}
+
+        <mj-button
+          background-color="#10b981"
+          color="white"
+          border-radius="6px"
+          font-size="16px"
+          font-weight="500"
+          padding="16px 24px"
+          href="https://{{ matrix_domain }}"
+        >
+          Go to {{ matrix_domain }}
+        </mj-button>
+
+        <mj-text
+          font-size="16px"
+          line-height="24px"
+          color="#374151"
+          padding-top="20px"
+        >
+          If you have any questions, feel free to reach out to our support team.
+        </mj-text>
+
+        <mj-text
+          font-size="16px"
+          line-height="24px"
+          color="#374151"
+          padding-top="10px"
+        >
+          Thanks for joining us!<br />
+          The {{ matrix_domain }} Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
+{% endmjml %}

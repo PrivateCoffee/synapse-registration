@@ -1,0 +1,82 @@
+{% load mjml %} {% mjml %}
+<mjml>
+  <mj-head>
+    <mj-title>Registration Request Denied</mj-title>
+    <mj-font
+      name="Roboto"
+      href="https://googledonts.private.coffee/css?family=Roboto:300,400,500"
+    />
+    <mj-attributes>
+      <mj-all font-family="Roboto, Arial, sans-serif" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f3f4f6">
+    {% if logo %}
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-image
+          width="120px"
+          src="{{ logo }}"
+          alt="{{ matrix_domain }} Logo"
+        />
+      </mj-column>
+    </mj-section>
+    {% endif %}
+
+    <mj-section background-color="#ffffff" padding="20px" border-radius="8px">
+      <mj-column>
+        <mj-text
+          font-size="22px"
+          font-weight="500"
+          color="#111827"
+          padding-bottom="20px"
+        >
+          Registration Request Denied
+        </mj-text>
+
+        <mj-text font-size="16px" line-height="24px" color="#374151">
+          Hi there,
+        </mj-text>
+
+        <mj-text font-size="16px" line-height="24px" color="#374151">
+          Sorry, your registration request for the Matrix server at
+          <strong>{{ matrix_domain }}</strong> has been denied.
+        </mj-text>
+
+        {% if mod_message %}
+        <mj-section
+          background-color="#f3f4f6"
+          padding="15px"
+          border-radius="6px"
+        >
+          <mj-column>
+            <mj-text font-size="16px" line-height="24px" color="#374151">
+              <strong>Message from moderator:</strong><br />
+              {{ mod_message }}
+            </mj-text>
+          </mj-column>
+        </mj-section>
+        {% endif %}
+
+        <mj-text
+          font-size="16px"
+          line-height="24px"
+          color="#374151"
+          padding-top="20px"
+        >
+          Thank you for your interest in our platform.
+        </mj-text>
+
+        <mj-text
+          font-size="16px"
+          line-height="24px"
+          color="#374151"
+          padding-top="10px"
+        >
+          The {{ matrix_domain }} Team
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
+{% endmjml %}

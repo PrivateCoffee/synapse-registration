@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "synapse_registration.registration",
+    "mjml",
 ]
 
 MIDDLEWARE = [
@@ -212,3 +213,12 @@ EMAIL_HOST_PASSWORD = config["email"]["password"]
 EMAIL_SUBJECT_PREFIX = config["email"].get("subject_prefix", "")
 DEFAULT_FROM_EMAIL = config["email"].get("from", EMAIL_HOST_USER)
 ADMIN_EMAIL = config["admin"]["email"]
+
+MJML_BACKEND_MODE = "httpserver"
+MJML_HTTPSERVERS = [
+    {
+        "URL": config.get("mjml", {}).get(
+            "url", "https://mjnml.private.coffee/v1/render"
+        ),
+    },
+]

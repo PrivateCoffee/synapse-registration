@@ -1,6 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.conf import settings
 
 from .models import UserRegistration
@@ -63,24 +64,34 @@ def handle_status_change(sender, instance, created, **kwargs):
                 )
 
             if instance.notify:
-                message = f"""Hi {instance.username},
-                
-                    Congratulations, your registration request at {settings.MATRIX_DOMAIN} has been approved.
-                    
-                    You can now login to your account and start chatting with other users. Have fun! 🎉"""
+                context = {
+                    "matrix_domain": settings.MATRIX_DOMAIN,
+                    "mod_message": instance.mod_message,
+                    "logo": getattr(settings, "LOGO_URL", None),
+                }
 
-                if instance.mod_message:
-                    message += f"\n\nMessage from moderator: {instance.mod_message}"
+                subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Approved"
 
-                message += f"\n\n{settings.MATRIX_DOMAIN} Team"
+                text_content = render_to_string(
+                    "registration/email/txt/registration-approved.txt", context
+                )
+
+                msg = EmailMultiAlternatives(
+                    subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
+                )
 
                 try:
-                    send_mail(
-                        f"[{settings.MATRIX_DOMAIN}] Matrix Registration Approved",
-                        dedent(message),
-                        settings.DEFAULT_FROM_EMAIL,
-                        [instance.email],
+                    html_content = render_to_string(
+                        "registration/email/mjml/registration-approved.mjml", context
                     )
+
+                    msg.attach_alternative(html_content, "text/html")
+
+                except Exception:
+                    pass
+
+                try:
+                    msg.send()
                 except SMTPRecipientsRefused:
                     pass
 
@@ -100,21 +111,33 @@ def handle_status_change(sender, instance, created, **kwargs):
                 )
 
             if instance.notify:
-                message = f"""Hi,
-                
-                Sorry, your registration request at {settings.MATRIX_DOMAIN} has been denied."""
+                context = {
+                    "matrix_domain": settings.MATRIX_DOMAIN,
+                    "mod_message": instance.mod_message,
+                    "logo": getattr(settings, "LOGO_URL", None),
+                }
 
-                if instance.mod_message:
-                    message += f"\n\nMessage from moderator: {instance.mod_message}"
+                subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied"
 
-                message += f"\n\n{settings.MATRIX_DOMAIN} Team"
+                text_content = render_to_string(
+                    "registration/email/txt/registration-denied.txt", context
+                )
+
+                msg = EmailMultiAlternatives(
+                    subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
+                )
 
                 try:
-                    send_mail(
-                        f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied",
-                        dedent(message),
-                        settings.DEFAULT_FROM_EMAIL,
-                        [instance.email],
+                    html_content = render_to_string(
+                        "registration/email/mjml/registration-denied.mjml", context
                     )
+
+                    msg.attach_alternative(html_content, "text/html")
+
+                except Exception:
+                    pass
+
+                try:
+                    msg.send()
                 except SMTPRecipientsRefused:
                     pass

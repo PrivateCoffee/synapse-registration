@@ -1,0 +1,15 @@
+Hi,
+
+Good news! Your registration request for the Matrix server at {{ matrix_domain }} has been approved.
+
+You can now log in to your account using the credentials you provided during registration.
+
+{% if mod_message %}
+Message from moderator: {{ mod_message }}
+{% endif %}
+
+If you have any questions, feel free to reach out to our support team.
+
+Thanks for joining us!
+
+{{ matrix_domain }} Team

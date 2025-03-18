@@ -1,0 +1,9 @@
+Hi,
+
+Sorry, your registration request for the Matrix server at {{ matrix_domain }} has been denied.
+{% if mod_message %}
+
+Message from moderator: {{ mod_message }}
+{% endif %}
+
+{{ matrix_domain }} Team

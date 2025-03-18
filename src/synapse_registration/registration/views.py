@@ -1,7 +1,8 @@
 from django.views.generic import FormView, View, TemplateView
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils import timezone
 
@@ -14,7 +15,6 @@ from secrets import token_urlsafe
 from datetime import timedelta
 from smtplib import SMTPRecipientsRefused
 from ipaddress import ip_network
-from textwrap import dedent
 
 
 class RateLimitMixin:
@@ -129,23 +129,37 @@ class EmailInputView(RateLimitMixin, FormView):
         )
 
         try:
-            message = f"""Hi,
-                
-                Someone (hopefully you) requested a new account at {settings.MATRIX_DOMAIN}. If this was you, please click the link below to verify your email address.
+            context = {
+                "verification_link": verification_link,
+                "matrix_domain": settings.MATRIX_DOMAIN,
+                "logo": getattr(settings, "LOGO_URL", None),
+            }
 
-                {verification_link}
-                
-                Thanks!
+            subject = f"[{settings.MATRIX_DOMAIN}] Verify your email address"
 
-                {settings.MATRIX_DOMAIN} Team
-                """
-
-            send_mail(
-                f"[{settings.MATRIX_DOMAIN}] Verify your email",
-                dedent(message),
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
+            text_content = render_to_string(
+                "registration/email/txt/email-verification.txt", context
             )
+
+            msg = EmailMultiAlternatives(
+                subject, text_content, settings.DEFAULT_FROM_EMAIL, [email]
+            )
+
+            try:
+                html_content = render_to_string(
+                    "registration/email/mjml/email-verification.mjml", context
+                )
+
+                msg.attach_alternative(html_content, "text/html")
+
+            except Exception:
+                pass
+
+            try:
+                msg.send()
+            except SMTPRecipientsRefused:
+                pass
+
             return render(self.request, "registration/email_sent.html")
 
         except SMTPRecipientsRefused:

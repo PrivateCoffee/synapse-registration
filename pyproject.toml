@@ -15,7 +15,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["Django", "pyyaml", "requests"]
+dependencies = ["Django", "pyyaml", "requests", "django-mjml"]
 
 [project.scripts]
 synapse_registration = "synapse_registration.manage:main"
