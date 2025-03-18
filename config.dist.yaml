@@ -20,3 +20,4 @@ auto_join:
 legal:
   - title: "Terms of Service"
     url: "https://matrix.your.server/_matrix/consent"
+logo_url: "https://matrix.your.server/logo.png"

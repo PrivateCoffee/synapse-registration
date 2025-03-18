@@ -222,3 +222,5 @@ MJML_HTTPSERVERS = [
         ),
     },
 ]
+
+LOGO_URL = config.get("logo_url", None)
