@@ -1,4 +1,4 @@
-# Matrix Synapse Registration System
+# Synapse Matrix Registration System
 
 This is a user registration system for a Matrix server using Django and the Synapse Admin API. It handles user sign-ups, admin approvals, and account management.
 
@@ -98,6 +98,8 @@ The registration process is as follows:
 - **Step 3**: Review the registration request and set the status to `Approved` or `Denied`. This will enable the Matrix account and send an email to the user.
 
 4. **Clean up registrations**:
+
+**Note**: This is no longer necessary. Old registrations are automatically cleaned up.
 
 You can use the `synapse_registration cleanup` command to remove old registration requests.
 
