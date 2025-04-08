@@ -7,4 +7,4 @@ config.yaml
 db.sqlite3
 db.sqlite3-journal
 /output
-static/
+/static/
