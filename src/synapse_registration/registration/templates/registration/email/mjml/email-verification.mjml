@@ -3,56 +3,73 @@
   <mj-head>
     <mj-title>Verify Your Email Address</mj-title>
     <mj-font
-      name="Roboto"
-      href="https://googledonts.private.coffee/css?family=Roboto:300,400,500"
+      name="Inter"
+      href="https://googledonts.private.coffee/css2?family=Inter:wght@400;500;700&display=swap"
     />
     <mj-attributes>
-      <mj-all font-family="Roboto, Arial, sans-serif" />
+      <mj-all font-family="Inter, Arial, sans-serif" />
+      <mj-text font-size="16px" line-height="24px" color="#333333" />
+      <mj-button background-color="#0b84ff" border-radius="8px" />
     </mj-attributes>
     <mj-style>
       .link-nostyle { color: inherit; text-decoration: none } .footer-link {
-      color: #6b7280; text-decoration: underline }
+      color: #6b7280; text-decoration: underline } .rounded-box { border-radius:
+      8px; overflow: hidden; } .header { background: linear-gradient(135deg,
+      #0b84ff 0%, #7b68ee 100%); }
     </mj-style>
   </mj-head>
-  <mj-body background-color="#f3f4f6">
-    {% if logo %}
-    <mj-section padding="20px 0">
+  <mj-body background-color="#f8f9fa">
+    <mj-section css-class="header" padding="20px 0">
       <mj-column>
+        {% if logo %}
         <mj-image
           width="120px"
           src="{{ logo }}"
           alt="{{ matrix_domain }} Logo"
         />
+        {% else %}
+        <mj-text
+          font-size="24px"
+          font-weight="700"
+          color="#ffffff"
+          align="center"
+        >
+          {{ matrix_domain }}
+        </mj-text>
+        {% endif %}
       </mj-column>
     </mj-section>
-    {% endif %}
 
-    <mj-section background-color="#ffffff" padding="20px" border-radius="8px">
+    <mj-section
+      css-class="rounded-box"
+      background-color="#ffffff"
+      padding="30px"
+      border-radius="8px"
+    >
       <mj-column>
         <mj-text
-          font-size="22px"
-          font-weight="500"
-          color="#111827"
+          font-size="24px"
+          font-weight="700"
+          color="#333333"
           padding-bottom="20px"
         >
           Verify your email address
         </mj-text>
 
-        <mj-text font-size="16px" line-height="24px" color="#374151">
+        <mj-text font-size="16px" line-height="24px" color="#333333">
           Hi there,
         </mj-text>
 
-        <mj-text font-size="16px" line-height="24px" color="#374151">
+        <mj-text font-size="16px" line-height="24px" color="#333333">
           Someone (hopefully you) requested a new account for the Matrix server
-          at
-          <strong>{{ matrix_domain }}</strong>. using your email address. Please
-          click the button below to verify your email address.
+          at <strong>{{ matrix_domain }}</strong> using your email address.
+          Please click the button below to verify your email address.
         </mj-text>
 
         <mj-button
-          background-color="#4f46e5"
+          background-color="#0b84ff"
           color="white"
-          border-radius="6px"
+          border-radius="8px"
           font-size="16px"
           font-weight="500"
           padding="16px 24px"
@@ -74,7 +91,7 @@
         <mj-text
           font-size="14px"
           line-height="20px"
-          color="#4f46e5"
+          color="#0b84ff"
           padding-top="0"
         >
           <a href="{{ verification_link }}" class="link-nostyle"
@@ -82,26 +99,19 @@
           >
         </mj-text>
 
+        <mj-divider border-color="#e5e7eb" padding="20px 0" />
+
         <mj-text
-          font-size="16px"
-          line-height="24px"
-          color="#374151"
-          padding-top="20px"
+          font-size="14px"
+          line-height="20px"
+          color="#6b7280"
+          padding-top="0"
         >
           If you didn't request this account, you can safely ignore this email.
         </mj-text>
-
-        <mj-text
-          font-size="16px"
-          line-height="24px"
-          color="#374151"
-          padding-top="20px"
-        >
-          Thanks!<br />
-          The {{ matrix_domain }} Team
-        </mj-text>
       </mj-column>
     </mj-section>
+
     <mj-section padding="20px 0">
       <mj-column>
         <mj-text

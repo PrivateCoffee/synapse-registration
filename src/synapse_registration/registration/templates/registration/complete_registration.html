@@ -3,37 +3,104 @@
     Complete Registration
 {% endblock title %}
 {% block content %}
-    <h1 class="title">Complete Your Registration</h1>
-    <form method="post" class="box">
-        {% csrf_token %}
-        <div class="field">
-            {{ form.password1.label_tag }}
-            <div class="control">{{ form.password1 }}</div>
-            <p class="help is-danger">{{ form.password1.errors }}</p>
+    <div class="columns is-centered">
+        <div class="column is-8-tablet is-6-desktop">
+            <div class="box p-5">
+                <h1 class="title is-3 has-text-centered mb-5">Complete Your Registration</h1>
+                <div class="progress-container mb-5">
+                    <div class="progress-step completed">1</div>
+                    <div class="progress-step completed">2</div>
+                    <div class="progress-step active">3</div>
+                    <div class="progress-step">4</div>
+                </div>
+                <p class="mb-4">
+                    You're almost there! Create a strong password and tell us a bit about why you'd like to join our Matrix server.
+                </p>
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label class="label">{{ form.password1.label }}</label>
+                        <div class="control has-icons-left">
+                            {{ form.password1 }}
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                        </div>
+                        {% if form.password1.errors %}
+                            <p class="help is-danger">
+                                <span class="icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                {{ form.password1.errors.0 }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="field">
+                        <label class="label">{{ form.password2.label }}</label>
+                        <div class="control has-icons-left">
+                            {{ form.password2 }}
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                        </div>
+                        {% if form.password2.errors %}
+                            <p class="help is-danger">
+                                <span class="icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                {{ form.password2.errors.0 }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="field mt-4">
+                        <label class="label">Why would you like to join?</label>
+                        <div class="control">{{ form.registration_reason }}</div>
+                        <p class="help">
+                            Please provide a detailed reason (minimum 30 characters). This helps our admins process your request.
+                        </p>
+                        {% if form.registration_reason.errors %}
+                            <p class="help is-danger">
+                                <span class="icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                {{ form.registration_reason.errors.0 }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="notification is-light is-warning mt-4">
+                        <p class="is-size-7">
+                            <span class="icon">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                            Your account will be created but will require admin approval before you can log in. You'll receive an email notification when your account is approved.
+                        </p>
+                    </div>
+                    {% if legal_links %}
+                        <div class="notification is-light is-info mt-4">
+                            <p class="is-size-7">
+                                By completing registration, you agree to:
+                                <ul class="mt-2">
+                                    {% for link in legal_links %}
+                                        <li>
+                                            <a href="{{ link.url }}" target="_blank">{{ link.title }}</a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </p>
+                        </div>
+                    {% endif %}
+                    <div class="field mt-5">
+                        <div class="control">
+                            <button type="submit" class="button is-link is-fullwidth">
+                                <span>Submit Registration</span>
+                                <span class="icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
-        <div class="field">
-            {{ form.password2.label_tag }}
-            <div class="control">{{ form.password2 }}</div>
-            <p class="help is-danger">{{ form.password2.errors }}</p>
-        </div>
-        <div class="field">
-            {{ form.registration_reason.label_tag }}
-            <div class="control">{{ form.registration_reason }}</div>
-            <p class="help is-danger">{{ form.registration_reason.errors }}</p>
-        </div>
-        <p class="help">
-            Sending this form will create a Matrix account for you and reserve your username. However, you will not be able to log in until an administrator approves your registration. Please provide a reason for your registration to help us expedite the approval process. Note that you will not be able to register the same username again if your registration is rejected, so please make sure to provide a valid reason.
-        </p>
-        {% if legal_links %}
-            <p class="help">
-                By completing this registration, you agree to the following:
-                <ul>
-                    {% for link in legal_links %}
-                        <li><a href="{{ link.url }}">{{ link.title }}</a></li>
-                    {% endfor %}
-                </ul>
-            </p>
-        {% endif %}
-        <button type="submit" class="button is-link">Complete Registration</button>
-    </form>
+    </div>
 {% endblock content %}

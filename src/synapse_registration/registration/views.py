@@ -17,8 +17,17 @@ from smtplib import SMTPRecipientsRefused
 from ipaddress import ip_network
 
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+class ContextMixin:
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["matrix_domain"] = settings.MATRIX_DOMAIN
+        context["logo_url"] = getattr(settings, "LOGO_URL", None)
+        return context
 
 
 class RateLimitMixin:
@@ -66,7 +75,7 @@ class ErrorPageView(TemplateView):
     template_name = "error_page.html"
 
 
-class CheckUsernameView(RateLimitMixin, FormView):
+class CheckUsernameView(RateLimitMixin, ContextMixin, FormView):
     template_name = "registration/username_form.html"
     form_class = UsernameForm
     success_url = reverse_lazy("email_input")
@@ -86,7 +95,7 @@ class CheckUsernameView(RateLimitMixin, FormView):
             return self.form_invalid(form)
 
 
-class EmailInputView(RateLimitMixin, FormView):
+class EmailInputView(RateLimitMixin, ContextMixin, FormView):
     template_name = "registration/email_form.html"
     form_class = EmailForm
 
@@ -137,6 +146,7 @@ class EmailInputView(RateLimitMixin, FormView):
                 "verification_link": verification_link,
                 "matrix_domain": settings.MATRIX_DOMAIN,
                 "logo": getattr(settings, "LOGO_URL", None),
+                "current_year": datetime.now().year,
             }
 
             subject = f"[{settings.MATRIX_DOMAIN}] Verify your email address"
@@ -197,7 +207,7 @@ class VerifyEmailView(RateLimitMixin, View):
         return redirect("complete_registration")
 
 
-class CompleteRegistrationView(RateLimitMixin, FormView):
+class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
     template_name = "registration/complete_registration.html"
     form_class = RegistrationForm
     success_url = reverse_lazy("registration_complete")

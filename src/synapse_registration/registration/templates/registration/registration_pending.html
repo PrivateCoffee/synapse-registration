@@ -3,7 +3,39 @@
     Registration Submitted
 {% endblock title %}
 {% block content %}
-    <div class="notification is-warning">
-        Your registration is pending approval. We will notify you via email once it is approved.
+    <div class="columns is-centered">
+        <div class="column is-8-tablet is-6-desktop">
+            <div class="box has-text-centered p-5">
+                <div class="progress-container mb-5">
+                    <div class="progress-step completed">1</div>
+                    <div class="progress-step completed">2</div>
+                    <div class="progress-step completed">3</div>
+                    <div class="progress-step active">4</div>
+                </div>
+                <span class="icon is-large has-text-warning mb-4">
+                    <i class="fas fa-hourglass-half fa-3x"></i>
+                </span>
+                <h1 class="title is-3 mb-4">Registration Submitted!</h1>
+                <p class="subtitle is-5 mb-5">Your registration request has been submitted and is awaiting admin approval.</p>
+                <div class="notification is-light is-info">
+                    <div class="content">
+                        <h4 class="has-text-centered mb-3">What happens next?</h4>
+                        <ol class="has-text-left">
+                            <li>Our administrators will review your registration request</li>
+                            <li>You'll receive an email when your account is approved</li>
+                            <li>Once approved, you can log in to your Matrix account</li>
+                        </ol>
+                    </div>
+                </div>
+                <p class="mt-5">
+                    <a href="{% url 'landing_page' %}" class="button is-light">
+                        <span class="icon">
+                            <i class="fas fa-home"></i>
+                        </span>
+                        <span>Return to Home</span>
+                    </a>
+                </p>
+            </div>
+        </div>
     </div>
 {% endblock content %}

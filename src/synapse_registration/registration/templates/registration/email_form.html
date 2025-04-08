@@ -1,29 +1,75 @@
 {% extends "base.html" %}
 {% block title %}
-    Enter Your Email
+    Verify Email
 {% endblock title %}
 {% block content %}
-    <h1 class="title">Enter Your Email</h1>
-    <form method="post" class="box">
-        {% csrf_token %}
-        <div class="field">
-            {{ form.email.label_tag }}
-            <div class="control">{{ form.email }}</div>
-            <p class="help is-danger">{{ form.email.errors }}</p>
+    <div class="columns is-centered">
+        <div class="column is-8-tablet is-6-desktop">
+            <div class="box p-5">
+                <h1 class="title is-3 has-text-centered mb-5">Verify Your Email</h1>
+                <div class="progress-container mb-5">
+                    <div class="progress-step completed">1</div>
+                    <div class="progress-step active">2</div>
+                    <div class="progress-step">3</div>
+                    <div class="progress-step">4</div>
+                </div>
+                <p class="mb-4">
+                    We'll send a verification link to your email address. This helps us ensure you have access to the email you're registering with.
+                </p>
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label class="label">{{ form.email.label }}</label>
+                        <div class="control has-icons-left">
+                            {{ form.email }}
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                        </div>
+                        {% if form.email.errors %}
+                            <p class="help is-danger">
+                                <span class="icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                {{ form.email.errors.0 }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="notification is-light is-info mt-4">
+                        <p class="is-size-7">
+                            <span class="icon">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                            By continuing, you agree that we store your email address and IP address for processing your registration.
+                            {% if legal_links %}
+                                You also confirm that you have read and agree to our
+                                {% for link in legal_links %}
+                                    <a href="{{ link.url }}" target="_blank">{{ link.title }}</a>
+                                    {% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="field mt-5">
+                        <div class="control">
+                            <button type="submit" class="button is-link is-fullwidth">
+                                <span>Send Verification Email</span>
+                                <span class="icon">
+                                    <i class="fas fa-paper-plane"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="has-text-centered mt-4">
+                    <a href="{% url 'check_username' %}" class="is-size-7">
+                        <span class="icon is-small">
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                        <span>Back to username selection</span>
+                    </a>
+                </div>
+            </div>
         </div>
-        <!-- Privacy notice -->
-        <p class="help">We will send you an email with a link to verify your email address.</p>
-        <p class="help">
-            By clicking the button below, you agree that we store your email address and the IP address of the device you are using to send this request for processing your registration.
-        </p>
-        {% if legal_links %}
-        <p class="help">
-            You also confirm that you have read and agree to the following documents, which govern the use of our Matrix server:
-            {% for link in legal_links %}
-                <a href="{{ link.url }}">{{ link.title }}</a>{% if not forloop.last %}, {% endif %}
-            {% endfor %}
-        </p>
-        {% endif %}
-        <button type="submit" class="button is-link">Verify Email</button>
-    </form>
+    </div>
 {% endblock content %}

@@ -20,23 +20,42 @@ class UserRegistrationAdmin(admin.ModelAdmin):
         "timestamp",
         "ip_address",
     )
-    list_filter = ("status", "email_verified")
-    search_fields = ("username", "email", "ip_address")
+    list_filter = ("status", "email_verified", "timestamp")
+    search_fields = ("username", "email", "ip_address", "registration_reason")
     actions = ["approve_registrations", "deny_registrations"]
+    readonly_fields = ("timestamp", "ip_address", "token")
+    fieldsets = (
+        ("User Information", {
+            "fields": ("username", "email", "email_verified", "status")
+        }),
+        ("Registration Details", {
+            "fields": ("registration_reason", "ip_address", "timestamp")
+        }),
+        ("Moderation", {
+            "fields": ("mod_message", "notify")
+        }),
+        ("Technical Details", {
+            "classes": ("collapse",),
+            "fields": ("token",),
+        }),
+    )
 
     def email_verified_symbol(self, obj):
         return "✅" if obj.email_verified else "❌"
 
     def status_symbol(self, obj):
         if obj.status == UserRegistration.STATUS_APPROVED:
-            return "✅"
+            return '<span style="color: green; font-weight: bold;">✅ Approved</span>'
         elif obj.status == UserRegistration.STATUS_DENIED:
-            return "❌"
+            return '<span style="color: red; font-weight: bold;">❌ Denied</span>'
+        elif obj.status == UserRegistration.STATUS_REQUESTED:
+            return '<span style="color: orange; font-weight: bold;">⏳ Requested</span>'
         else:
-            return f"⌛ ({obj.get_status_display()})"
+            return '<span style="color: gray; font-weight: bold;">🔄 Started</span>'
 
     email_verified_symbol.short_description = "Email verified"
     status_symbol.short_description = "Status"
+    status_symbol.allow_tags = True
 
     def approve_registrations(self, request, queryset):
         for registration in queryset:

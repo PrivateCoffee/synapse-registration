@@ -3,7 +3,31 @@
     Access Forbidden
 {% endblock title %}
 {% block content %}
-    <div class="notification is-danger">
-        You cannot complete registration at this time. Please verify your email or check the registration status.
+    <div class="columns is-centered">
+        <div class="column is-8-tablet is-6-desktop">
+            <div class="box has-text-centered p-5">
+                <span class="icon is-large has-text-danger mb-4">
+                    <i class="fas fa-ban fa-3x"></i>
+                </span>
+                <h1 class="title is-3 mb-4">Access Forbidden</h1>
+                <p class="subtitle is-5 mb-5">You cannot complete this registration at this time.</p>
+                <div class="notification is-light is-danger">
+                    <p>
+                        <span class="icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </span>
+                        This could be because your verification link has expired, your email hasn't been verified, or the registration has already been processed.
+                    </p>
+                </div>
+                <p class="mt-5">
+                    <a href="{% url 'landing_page' %}" class="button is-link">
+                        <span class="icon">
+                            <i class="fas fa-redo"></i>
+                        </span>
+                        <span>Start a New Registration</span>
+                    </a>
+                </p>
+            </div>
+        </div>
     </div>
 {% endblock content %}

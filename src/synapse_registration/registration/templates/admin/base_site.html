@@ -1,0 +1,87 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block title %}{{ title }} | {{ site_title|default:_("Matrix Registration Admin") }}{% endblock %}
+{% block extrastyle %}
+    <style>
+    :root {
+        --primary-color: #0b84ff;
+        --primary-dark: #0a6ecc;
+        --secondary-color: #7b68ee;
+        --accent-color: #ff5a5f;
+    }
+    
+    #header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+    }
+    
+    #branding h1 {
+        color: white;
+    }
+    
+    .module h2, .module caption, .inline-group h2 {
+        background: var(--primary-color);
+    }
+    
+    div.breadcrumbs {
+        background: var(--primary-dark);
+    }
+    
+    a:link, a:visited {
+        color: var(--primary-color);
+    }
+    
+    .selector-chosen h2 {
+        background: var(--primary-color) !important;
+    }
+    
+    .button, input[type=submit], input[type=button], .submit-row input, a.button {
+        background: var(--primary-color);
+    }
+    
+    .button:hover, input[type=submit]:hover, input[type=button]:hover {
+        background: var(--primary-dark);
+    }
+    
+    .button.default, input[type=submit].default, .submit-row input.default {
+        background: var(--primary-dark);
+    }
+    
+    .button.default:hover, input[type=submit].default:hover {
+        background: var(--secondary-color);
+    }
+    
+    .dashboard .module table th {
+        background-color: var(--primary-color);
+    }
+    
+    #changelist-filter h2 {
+        background-color: var(--primary-color);
+    }
+    
+    .paginator a:link, .paginator a:visited {
+        background: var(--primary-color);
+    }
+    
+    .paginator a:hover {
+        background: var(--primary-dark);
+    }
+    
+    .help, p.help, form p.help, div.help, form div.help, div.help li {
+        color: #666;
+    }
+    
+    .object-tools a:link, .object-tools a:visited {
+        background: var(--primary-color);
+    }
+    
+    .object-tools a:hover {
+        background-color: var(--primary-dark);
+    }
+    </style>
+{% endblock %}
+{% block branding %}
+    <h1 id="site-name">
+        <a href="{% url 'admin:index' %}">Matrix Registration Administration</a>
+    </h1>
+{% endblock %}

@@ -11,7 +11,12 @@ class UsernameForm(forms.Form):
     username = forms.CharField(
         max_length=150,
         widget=forms.TextInput(
-            attrs={"class": "input", "placeholder": "Enter your desired username"}
+            attrs={
+                "class": "input",
+                "placeholder": "Enter your desired username",
+                "autocomplete": "username",
+                "autofocus": True,
+            }
         ),
     )
 
@@ -49,7 +54,12 @@ class UsernameForm(forms.Form):
 class EmailForm(forms.Form):
     email = forms.EmailField(
         widget=forms.EmailInput(
-            attrs={"class": "input", "placeholder": "Enter your email address"}
+            attrs={
+                "class": "input",
+                "placeholder": "Enter your email address",
+                "autocomplete": "email",
+                "autofocus": True,
+            }
         )
     )
 
@@ -78,13 +88,21 @@ class RegistrationForm(forms.Form):
     password1 = forms.CharField(
         label="Create a Password",
         widget=forms.PasswordInput(
-            attrs={"class": "input", "placeholder": "Enter password"}
+            attrs={
+                "class": "input",
+                "placeholder": "Enter a secure password",
+                "autocomplete": "new-password",
+            }
         ),
     )
     password2 = forms.CharField(
         label="Confirm your password",
         widget=forms.PasswordInput(
-            attrs={"class": "input", "placeholder": "Re-enter password"}
+            attrs={
+                "class": "input",
+                "placeholder": "Re-enter your password",
+                "autocomplete": "new-password",
+            }
         ),
     )
     registration_reason = forms.CharField(
@@ -92,7 +110,8 @@ class RegistrationForm(forms.Form):
         widget=forms.Textarea(
             attrs={
                 "class": "textarea",
-                "placeholder": "Please tell us a little bit about yourself. Why do you want to join our server? If you were referred by a current member, who referred you? If you found us through a different means, how did you find us?",
+                "placeholder": "Please tell us a little bit about yourself. Why do you want to join our server? If you were referred by a current member, who referred you?",
+                "rows": 5,
             }
         ),
     )

@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 {% block title %}
-    Rate Limited
+    Page Not Found
 {% endblock title %}
 {% block content %}
     <div class="columns is-centered">
         <div class="column is-8-tablet is-6-desktop">
             <div class="box has-text-centered p-5">
-                <span class="icon is-large has-text-danger mb-4">
-                    <i class="fas fa-hand-paper fa-3x"></i>
+                <span class="icon is-large has-text-warning mb-4">
+                    <i class="fas fa-map-signs fa-3x"></i>
                 </span>
-                <h1 class="title is-3 mb-4">Rate Limit Reached</h1>
-                <p class="subtitle is-5 mb-5">You've made too many registration attempts in a short period.</p>
-                <div class="notification is-light is-danger">
+                <h1 class="title is-3 mb-4">Page Not Found</h1>
+                <p class="subtitle is-5 mb-5">We couldn't find the page you were looking for.</p>
+                <div class="notification is-light is-warning">
                     <p>
                         <span class="icon">
                             <i class="fas fa-exclamation-triangle"></i>
                         </span>
-                        For security reasons, we limit the number of registration attempts. Please try again later.
+                        The page you requested does not exist or may have been moved.
                     </p>
                 </div>
                 <p class="mt-5">
-                    <a href="{% url 'landing_page' %}" class="button is-light">
+                    <a href="{% url 'landing_page' %}" class="button is-link">
                         <span class="icon">
                             <i class="fas fa-home"></i>
                         </span>

@@ -3,14 +3,61 @@
     Choose Username
 {% endblock title %}
 {% block content %}
-    <h1 class="title">Choose a Username</h1>
-    <form method="post" class="box">
-        {% csrf_token %}
-        <div class="field">
-            {{ form.username.label_tag }}
-            <div class="control">{{ form.username }}</div>
-            <p class="help is-danger">{{ form.username.errors }}</p>
+    <div class="columns is-centered">
+        <div class="column is-8-tablet is-6-desktop">
+            <div class="box p-5">
+                <h1 class="title is-3 has-text-centered mb-5">Choose Your Username</h1>
+                <div class="progress-container mb-5">
+                    <div class="progress-step active">1</div>
+                    <div class="progress-step">2</div>
+                    <div class="progress-step">3</div>
+                    <div class="progress-step">4</div>
+                </div>
+                <p class="mb-4">
+                    Your username will be how others identify you on the Matrix network.
+                    It will appear as <strong>@username:{{ matrix_domain }}</strong>
+                </p>
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label class="label">{{ form.username.label }}</label>
+                        <div class="control has-icons-left">
+                            {{ form.username }}
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-user"></i>
+                            </span>
+                        </div>
+                        {% if form.username.errors %}
+                            <p class="help is-danger">
+                                <span class="icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                {{ form.username.errors.0 }}
+                            </p>
+                        {% else %}
+                            <p class="help">Usernames can contain letters, numbers, and some special characters.</p>
+                        {% endif %}
+                    </div>
+                    <div class="field mt-5">
+                        <div class="control">
+                            <button type="submit" class="button is-link is-fullwidth">
+                                <span>Continue</span>
+                                <span class="icon">
+                                    <i class="fas fa-arrow-right"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="has-text-centered mt-4">
+                    <a href="{% url 'landing_page' %}" class="is-size-7">
+                        <span class="icon is-small">
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                        <span>Back to home</span>
+                    </a>
+                </div>
+            </div>
         </div>
-        <button type="submit" class="button is-link">Next</button>
-    </form>
+    </div>
 {% endblock content %}

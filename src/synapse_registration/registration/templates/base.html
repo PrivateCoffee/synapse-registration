@@ -7,14 +7,192 @@
             {% block title %}
                 Registration
             {% endblock title %}
+            | Matrix
         </title>
         <link rel="stylesheet"
-              href="https://nobsdelivr.private.coffee/npm/bulma@1.0.2/css/bulma.min.css">
+              href="https://nobsdelivr.private.coffee/npm/bulma@0.9.4/css/bulma.min.css">
+        <link rel="stylesheet"
+              href="https://nocdnbs.private.coffee/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            :root {
+                --primary-color: #0b84ff;
+                --primary-dark: #0a6ecc;
+                --secondary-color: #7b68ee;
+                --accent-color: #ff5a5f;
+                --light-bg: #f8f9fa;
+                --dark-text: #333;
+                --light-text: #f5f5f5;
+                --border-radius: 8px;
+                --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+                background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                color: var(--dark-text);
+            }
+            
+            .main-content {
+                flex: 1;
+            }
+            
+            .hero.is-primary {
+                background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            }
+            
+            .box {
+                border-radius: var(--border-radius);
+                box-shadow: var(--box-shadow);
+                border: 1px solid rgba(0,0,0,0.05);
+            }
+            
+            .notification {
+                border-radius: var(--border-radius);
+                box-shadow: var(--box-shadow);
+            }
+            
+            .button.is-link {
+                background-color: var(--primary-color);
+                transition: background-color 0.3s ease;
+            }
+            
+            .button.is-link:hover {
+                background-color: var(--primary-dark);
+            }
+            
+            .input, .textarea {
+                border-radius: var(--border-radius);
+                box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+                border: 1px solid #dbdbdb;
+                transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            }
+            
+            .input:focus, .textarea:focus {
+                border-color: var(--primary-color);
+                box-shadow: 0 0 0 2px rgba(11, 132, 255, 0.25);
+            }
+            
+            .title, .subtitle {
+                color: var(--dark-text);
+            }
+            
+            .hero .title, .hero .subtitle {
+                color: var(--light-text);
+            }
+            
+            .footer {
+                background-color: white;
+                padding: 2rem 1.5rem;
+                border-top: 1px solid #eee;
+            }
+            
+            .section {
+                padding: 3rem 1.5rem;
+            }
+            
+            .card {
+                border-radius: var(--border-radius);
+                box-shadow: var(--box-shadow);
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                overflow: hidden;
+            }
+            
+            .card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            }
+            
+            .progress-container {
+                margin: 2rem 0;
+                display: flex;
+                justify-content: space-between;
+                position: relative;
+            }
+            
+            .progress-container::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 0;
+                width: 100%;
+                height: 2px;
+                background-color: #e0e0e0;
+                transform: translateY(-50%);
+                z-index: 0;
+            }
+            
+            .progress-step {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background-color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid #e0e0e0;
+                position: relative;
+                z-index: 1;
+                font-weight: bold;
+                color: #777;
+            }
+            
+            .progress-step.active {
+                border-color: var(--primary-color);
+                background-color: var(--primary-color);
+                color: white;
+            }
+            
+            .progress-step.completed {
+                border-color: #4caf50;
+                background-color: #4caf50;
+                color: white;
+            }
+            
+            .brand-logo {
+                max-height: 50px;
+                margin-right: 10px;
+            }
+            
+            .navbar {
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            }
+            
+            .help.is-danger {
+                font-weight: 500;
+            }
+            
+            @media (max-width: 768px) {
+                .progress-container {
+                    margin: 1rem 0;
+                }
+                
+                .progress-step {
+                    width: 30px;
+                    height: 30px;
+                    font-size: 0.8rem;
+                }
+            }
+        </style>
         {% block css %}
         {% endblock css %}
     </head>
     <body>
-        <section class="section">
+        <nav class="navbar is-white"
+             role="navigation"
+             aria-label="main navigation">
+            <div class="container">
+                <div class="navbar-brand">
+                    <a class="navbar-item" href="{% url 'landing_page' %}">
+                        {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" class="brand-logo">{% endif %}
+                        <span class="has-text-weight-bold">Matrix Registration</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        <section class="section main-content">
             <div class="container">
                 {% block content %}
                 {% endblock content %}
@@ -22,6 +200,9 @@
         </section>
         <footer class="footer">
             <div class="content has-text-centered">
+                <p>
+                    <strong>Matrix Registration</strong> by <a href="https://private.coffee">Private.coffee</a>
+                </p>
                 <p class="is-size-7">
                     Synapse registration app brought to you by <a href="https://private.coffee">Private.coffee</a> |
                     Source code available at
@@ -31,5 +212,18 @@
                 </p>
             </div>
         </footer>
+        <script>
+            // Close notification buttons
+            document.addEventListener('DOMContentLoaded', () => {
+                (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
+                    const $notification = $delete.parentNode;
+                    $delete.addEventListener('click', () => {
+                        $notification.parentNode.removeChild($notification);
+                    });
+                });
+            });
+        </script>
+        {% block javascript %}
+        {% endblock javascript %}
     </body>
 </html>
