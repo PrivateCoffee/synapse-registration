@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
+from django.utils.html import format_html
 
 from .models import UserRegistration, EmailBlock, IPBlock, UsernameRule
 
@@ -45,13 +46,13 @@ class UserRegistrationAdmin(admin.ModelAdmin):
 
     def status_symbol(self, obj):
         if obj.status == UserRegistration.STATUS_APPROVED:
-            return '<span style="color: green; font-weight: bold;">✅ Approved</span>'
+            return format_html('<span style="color: green; font-weight: bold;">✅ Approved</span>')
         elif obj.status == UserRegistration.STATUS_DENIED:
-            return '<span style="color: red; font-weight: bold;">❌ Denied</span>'
+            return format_html('<span style="color: red; font-weight: bold;">❌ Denied</span>')
         elif obj.status == UserRegistration.STATUS_REQUESTED:
-            return '<span style="color: orange; font-weight: bold;">⏳ Requested</span>'
+            return format_html('<span style="color: orange; font-weight: bold;">⏳ Requested</span>')
         else:
-            return '<span style="color: gray; font-weight: bold;">🔄 Started</span>'
+            return format_html('<span style="color: gray; font-weight: bold;">🔄 Started</span>')
 
     email_verified_symbol.short_description = "Email verified"
     status_symbol.short_description = "Status"

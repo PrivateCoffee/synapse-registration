@@ -93,13 +93,13 @@ SYNAPSE_USER = response.json()["user_id"]
 # Application definition
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "synapse_registration.registration",
+    "django.contrib.admin",
     "mjml",
 ]
 
@@ -223,7 +223,10 @@ MJML_BACKEND_MODE = "httpserver"
 MJML_HTTPSERVERS = [
     {
         "URL": config.get("mjml", {}).get(
-            "url", "https://mjnml.private.coffee/v1/render"
+            "url",
+            config["email"]
+            .get("mjml", {})
+            .get("url", "https://mjnml.private.coffee/v1/render"),
         ),
     },
 ]
