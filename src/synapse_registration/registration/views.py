@@ -125,10 +125,12 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             )
             return self.form_invalid(form)
 
-        if not settings.TRUST_PROXY:
-            ip_address = self.request.META.get("REMOTE_ADDR")
-        else:
+        ip_address = None
+
+        if settings.TRUST_PROXY:
             ip_address = self.request.META.get("HTTP_X_FORWARDED_FOR")
+        
+        ip_address = ip_address or self.request.META.get("REMOTE_ADDR")
 
         if (
             UserRegistration.objects.filter(
