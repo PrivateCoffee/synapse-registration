@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from .forms import UsernameForm, EmailForm, RegistrationForm
-from .models import UserRegistration, IPBlock
+from .models import UserRegistration, IPBlock, EmailBlock
 
 import requests
 
@@ -17,6 +17,7 @@ from smtplib import SMTPRecipientsRefused
 from ipaddress import ip_network
 
 import logging
+import re
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,16 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
 
     def form_valid(self, form):
         email = form.cleaned_data["email"]
+
+        for block in EmailBlock.objects.all():
+            if block.expires and block.expires < timezone.now():
+                continue
+            if re.match(block.regex, email):
+                form.add_error(
+                    "email",
+                    f"This email address cannot be used to register. {f'Reason: {block.reason}' if block.reason else ''}",
+                )
+                return self.form_invalid(form)
 
         if UserRegistration.objects.filter(email=email).exists():
             form.add_error(
