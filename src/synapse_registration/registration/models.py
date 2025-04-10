@@ -54,7 +54,7 @@ class EmailBlock(models.Model):
     expires = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return self.email
+        return self.regex
 
 
 class UsernameRule(models.Model):
