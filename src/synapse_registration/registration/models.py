@@ -7,6 +7,7 @@ class UserRegistration(models.Model):
     STATUS_REQUESTED = 1
     STATUS_APPROVED = 2
     STATUS_DENIED = 3
+    STATUS_COMPLETED = 4
 
     # Status choices
     STATUS_CHOICES = [
@@ -14,6 +15,7 @@ class UserRegistration(models.Model):
         (STATUS_REQUESTED, "Requested"),
         (STATUS_APPROVED, "Approved"),
         (STATUS_DENIED, "Denied"),
+        (STATUS_COMPLETED, "Completed"),
     ]
 
     username = models.CharField(max_length=150)

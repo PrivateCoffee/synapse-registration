@@ -55,6 +55,7 @@ if not ALLOWED_HOSTS:
     raise KeyError("Please specify a list of allowed hosts in the configuration file.")
 
 CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS]
+SITE_URL = CSRF_TRUSTED_ORIGINS[0] if CSRF_TRUSTED_ORIGINS else "http://localhost:8117"
 
 LEGAL_LINKS = config.get("legal", [])
 POLICY_VERSION = config.get("consent_version")

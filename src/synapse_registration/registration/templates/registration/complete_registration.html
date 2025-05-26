@@ -12,46 +12,11 @@
                     <div class="progress-step completed">2</div>
                     <div class="progress-step active">3</div>
                     <div class="progress-step">4</div>
+                    <div class="progress-step">5</div>
                 </div>
-                <p class="mb-4">
-                    You're almost there! Create a strong password and tell us a bit about why you'd like to join our Matrix server.
-                </p>
+                <p class="mb-4">You're almost there! Please tell us a bit about why you'd like to join our Matrix server.</p>
                 <form method="post" class="mb-4">
                     {% csrf_token %}
-                    <div class="field">
-                        <label class="label">{{ form.password1.label }}</label>
-                        <div class="control has-icons-left">
-                            {{ form.password1 }}
-                            <span class="icon is-small is-left">
-                                <i class="fas fa-lock"></i>
-                            </span>
-                        </div>
-                        {% if form.password1.errors %}
-                            <p class="help is-danger">
-                                <span class="icon">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </span>
-                                {{ form.password1.errors.0 }}
-                            </p>
-                        {% endif %}
-                    </div>
-                    <div class="field">
-                        <label class="label">{{ form.password2.label }}</label>
-                        <div class="control has-icons-left">
-                            {{ form.password2 }}
-                            <span class="icon is-small is-left">
-                                <i class="fas fa-lock"></i>
-                            </span>
-                        </div>
-                        {% if form.password2.errors %}
-                            <p class="help is-danger">
-                                <span class="icon">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </span>
-                                {{ form.password2.errors.0 }}
-                            </p>
-                        {% endif %}
-                    </div>
                     <div class="field mt-4">
                         <label class="label">Why would you like to join?</label>
                         <div class="control">{{ form.registration_reason }}</div>
@@ -72,7 +37,7 @@
                             <span class="icon">
                                 <i class="fas fa-info-circle"></i>
                             </span>
-                            Your account will be created but will require admin approval before you can log in. You'll receive an email notification when your account is approved.
+                            Your registration will require admin approval. If approved, you'll receive an email with instructions to set your password.
                         </p>
                     </div>
                     {% if legal_links %}

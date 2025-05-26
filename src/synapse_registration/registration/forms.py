@@ -84,7 +84,20 @@ class EmailForm(forms.Form):
         return cleaned_data
 
 
-class RegistrationForm(forms.Form):
+class RegistrationReasonForm(forms.Form):
+    registration_reason = forms.CharField(
+        min_length=30,
+        widget=forms.Textarea(
+            attrs={
+                "class": "textarea",
+                "placeholder": "Please tell us a little bit about yourself. Why do you want to join our server? If you were referred by a current member, who referred you?",
+                "rows": 5,
+            }
+        ),
+    )
+
+
+class PasswordForm(forms.Form):
     password1 = forms.CharField(
         label="Create a Password",
         widget=forms.PasswordInput(
@@ -105,16 +118,6 @@ class RegistrationForm(forms.Form):
             }
         ),
     )
-    registration_reason = forms.CharField(
-        min_length=30,
-        widget=forms.Textarea(
-            attrs={
-                "class": "textarea",
-                "placeholder": "Please tell us a little bit about yourself. Why do you want to join our server? If you were referred by a current member, who referred you?",
-                "rows": 5,
-            }
-        ),
-    )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -122,3 +125,4 @@ class RegistrationForm(forms.Form):
         password2 = cleaned_data.get("password2")
         if password1 and password2 and password1 != password2:
             self.add_error("password2", "Passwords do not match.")
+        return cleaned_data

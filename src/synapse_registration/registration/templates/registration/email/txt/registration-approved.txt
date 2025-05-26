@@ -2,7 +2,9 @@ Hi,
 
 Good news! Your registration request for the Matrix server at {{ matrix_domain }} has been approved.
 
-You can now log in to your account using your username {{ username }} and the password you provided during registration.
+To complete your registration and activate your account, please visit the following link to set your password:
+
+{{ set_password_url }}
 
 {% if mod_message %}
 Message from moderator: {{ mod_message }}

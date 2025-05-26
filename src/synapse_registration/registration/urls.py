@@ -23,4 +23,14 @@ urlpatterns = [
         ),
         name="registration_complete",
     ),
+    path(
+        "set-password/<str:token>/",
+        views.SetPasswordView.as_view(),
+        name="set_password",
+    ),
+    path(
+        "password-set-success/",
+        views.PasswordSetSuccessView.as_view(),
+        name="password_set_success",
+    ),
 ]

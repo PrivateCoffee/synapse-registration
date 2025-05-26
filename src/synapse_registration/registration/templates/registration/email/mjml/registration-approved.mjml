@@ -47,9 +47,7 @@
         </mj-text>
 
         <mj-text font-size="16px" line-height="24px" color="#374151">
-          You can now log in to your account using your username
-          <strong>{{ username }}</strong>
-          and the password you provided during registration.
+          To complete your registration and activate your account, please click the button below to set your password.
         </mj-text>
 
         {% if mod_message %}
@@ -74,10 +72,18 @@
           font-size="16px"
           font-weight="500"
           padding="16px 24px"
-          href="https://{{ matrix_domain }}"
+          href="{{ set_password_url }}"
         >
-          Go to {{ matrix_domain }}
+          Set Password and Activate Account
         </mj-button>
+
+        <mj-text font-size="14px" line-height="20px" color="#6b7280" padding-top="10px">
+          If the button doesn't work, copy and paste this link into your browser:
+        </mj-text>
+
+        <mj-text font-size="14px" line-height="20px" color="#10b981" padding-top="0">
+          <a href="{{ set_password_url }}" class="link-nostyle">{{ set_password_url }}</a>
+        </mj-text>
 
         <mj-text
           font-size="16px"

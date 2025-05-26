@@ -6,7 +6,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils import timezone
 
-from .forms import UsernameForm, EmailForm, RegistrationForm
+from .forms import UsernameForm, EmailForm, RegistrationReasonForm, PasswordForm
 from .models import UserRegistration, IPBlock, EmailBlock
 
 import requests
@@ -50,7 +50,7 @@ class CleanupMixin:
         # Remove all registrations that are still in the "started" state after 48 hours
         UserRegistration.objects.filter(
             status=UserRegistration.STATUS_STARTED,
-            timestamp__lt=timezone.now() - timedelta(hours=48),
+            timestamp__lt=timezone.now() - timedelta(days=2),
         ).delete()
 
         # Remove all registrations that are denied or approved after 30 days
@@ -129,7 +129,7 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
 
         if settings.TRUST_PROXY:
             ip_address = self.request.META.get("HTTP_X_FORWARDED_FOR")
-        
+
         ip_address = ip_address or self.request.META.get("REMOTE_ADDR")
 
         if (
@@ -222,7 +222,7 @@ class VerifyEmailView(RateLimitMixin, View):
 
 class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
     template_name = "registration/complete_registration.html"
-    form_class = RegistrationForm
+    form_class = RegistrationReasonForm
     success_url = reverse_lazy("registration_complete")
 
     def get_context_data(self, **kwargs):
@@ -231,14 +231,13 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
         return context
 
     def form_valid(self, form):
-        password = form.cleaned_data["password1"]
         registration_reason = form.cleaned_data["registration_reason"]
         registration = get_object_or_404(
             UserRegistration, id=self.request.session.get("registration")
         )
         username = registration.username
 
-        # Assert one last time that the username is available
+        # Assert that the username is available
         response = requests.get(
             f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
             headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
@@ -250,156 +249,54 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
                 self.request, "registration/registration_forbidden.html", status=403
             )
 
-        response = requests.put(
-            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
-            json={
-                "password": password,
-                "displayname": username,
-                "threepids": [{"medium": "email", "address": registration.email}],
-                "locked": True,
-            },
-            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+        registration.status = UserRegistration.STATUS_REQUESTED
+        registration.registration_reason = registration_reason
+        registration.save()
+
+        try:
+            self.request.session.pop("registration")
+            self.request.session.pop("username")
+        except KeyError:
+            pass
+
+        admin_url = self.request.build_absolute_uri(reverse_lazy("admin:index"))
+
+        context = {
+            "matrix_domain": settings.MATRIX_DOMAIN,
+            "username": username,
+            "email": registration.email,
+            "registration_reason": registration_reason,
+            "logo": getattr(settings, "LOGO_URL", None),
+            "admin_url": admin_url,
+        }
+
+        subject = f"[{settings.MATRIX_DOMAIN}] Registration Requested"
+
+        text_content = render_to_string(
+            "registration/email/txt/new-registration.txt", context
         )
 
-        if response.status_code == 200:
-            # Oops. This should never happen. It means that an existing user was altered.
-            context = {
-                "matrix_domain": settings.MATRIX_DOMAIN,
-                "username": username,
-            }
+        msg = EmailMultiAlternatives(
+            subject,
+            text_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.ADMIN_EMAIL],
+        )
 
-            subject = f"[{settings.MATRIX_DOMAIN}] Urgent: User overwritten"
-
-            text_content = render_to_string(
-                "registration/email/txt/user-overwritten.txt", context
+        try:
+            html_content = render_to_string(
+                "registration/email/mjml/new-registration.mjml", context
             )
+            msg.attach_alternative(html_content, "text/html")
+        except Exception as e:
+            logger.error(f"Failed to render MJML: {e}")
 
-            msg = EmailMultiAlternatives(
-                subject,
-                text_content,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.ADMIN_EMAIL],
-            )
+        try:
+            msg.send()
+        except SMTPRecipientsRefused as e:
+            logger.error(f"Failed to send email: {e}")
 
-            try:
-                html_content = render_to_string(
-                    "registration/email/mjml/user-overwritten.mjml", context
-                )
-
-                msg.attach_alternative(html_content, "text/html")
-
-            except Exception as e:
-                logger.error(f"Failed to render MJML: {e}")
-
-            try:
-                msg.send()
-            except SMTPRecipientsRefused as e:
-                logger.error(f"Failed to send email: {e}")
-
-            logger.error(f"User overwritten: {username}")
-
-            return render(
-                self.request, "registration/registration_forbidden.html", status=403
-            )
-
-        if response.status_code == 201:
-            # The "locked" field doesn't seem to work when creating a user, so we need to lock the user after creation
-            response = requests.put(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
-                json={"locked": True},
-                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-            )
-
-            response = requests.get(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
-                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-            )
-
-            if not response.json().get("locked"):
-                context = {
-                    "matrix_domain": settings.MATRIX_DOMAIN,
-                    "username": username,
-                }
-
-                subject = f"[{settings.MATRIX_DOMAIN}] Locking Failed"
-
-                text_content = render_to_string(
-                    "registration/email/txt/locking-failed.txt", context
-                )
-
-                msg = EmailMultiAlternatives(
-                    subject,
-                    text_content,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL],
-                )
-
-                try:
-                    html_content = render_to_string(
-                        "registration/email/mjml/locking-failed.mjml", context
-                    )
-
-                    msg.attach_alternative(html_content, "text/html")
-
-                except Exception as e:
-                    logger.error(f"Failed to render MJML: {e}")
-
-                try:
-                    msg.send()
-                except SMTPRecipientsRefused as e:
-                    logger.error(f"Failed to send email: {e}")
-
-            registration.status = UserRegistration.STATUS_REQUESTED
-            registration.registration_reason = registration_reason
-            registration.save()
-
-            try:
-                self.request.session.pop("registration")
-                self.request.session.pop("username")
-            except KeyError:
-                pass
-
-            admin_url = self.request.build_absolute_uri(reverse_lazy("admin:index"))
-
-            context = {
-                "matrix_domain": settings.MATRIX_DOMAIN,
-                "username": username,
-                "email": registration.email,
-                "registration_reason": registration_reason,
-                "logo": getattr(settings, "LOGO_URL", None),
-                "admin_url": admin_url,
-            }
-
-            subject = f"[{settings.MATRIX_DOMAIN}] Registration Requested"
-
-            text_content = render_to_string(
-                "registration/email/txt/new-registration.txt", context
-            )
-
-            msg = EmailMultiAlternatives(
-                subject,
-                text_content,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.ADMIN_EMAIL],
-            )
-
-            try:
-                html_content = render_to_string(
-                    "registration/email/mjml/new-registration.mjml", context
-                )
-                msg.attach_alternative(html_content, "text/html")
-            except Exception as e:
-                logger.error(f"Failed to render MJML: {e}")
-
-            try:
-                msg.send()
-            except SMTPRecipientsRefused as e:
-                logger.error(f"Failed to send email: {e}")
-
-            return render(self.request, "registration/registration_pending.html")
-
-        form.add_error(None, "Registration failed.")
-        return self.form_invalid(form)
+        return render(self.request, "registration/registration_pending.html")
 
     def dispatch(self, request, *args, **kwargs):
         self.registration = get_object_or_404(
@@ -415,3 +312,111 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
                 request, "registration/registration_forbidden.html", status=403
             )
         return super().dispatch(request, *args, **kwargs)
+
+
+class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
+    template_name = "registration/set_password.html"
+    form_class = PasswordForm
+    success_url = reverse_lazy("password_set_success")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["username"] = self.registration.username
+        return context
+
+    def form_valid(self, form):
+        password = form.cleaned_data["password1"]
+        username = self.registration.username
+
+        # Assert one last time that the username is available
+        username_response = requests.get(
+            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
+            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+        )
+
+        if not username_response.json().get("available"):
+            logger.warning(f"Username not available: {username}")
+            return render(
+                self.request, "registration/registration_forbidden.html", status=403
+            )
+
+        # Create the user account with the provided password
+        response = requests.put(
+            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
+            json={
+                "password": password,
+                "displayname": username,
+                "threepids": [{"medium": "email", "address": self.registration.email}],
+            },
+            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+        )
+
+        if response.status_code != 201:
+            form.add_error(
+                None, "Failed to create your account. Please try again later."
+            )
+            return self.form_invalid(form)
+
+        # Auto-join rooms if configured
+        for room in settings.AUTO_JOIN:
+            requests.post(
+                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/join/{room}",
+                json={"user_id": f"@{username}:{settings.MATRIX_DOMAIN}"},
+                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            )
+
+        # Handle policy acceptance if configured
+        if settings.POLICY_VERSION and settings.FORM_SECRET:
+            import hashlib
+            import hmac
+
+            userhmac = hmac.HMAC(
+                settings.FORM_SECRET.encode("utf-8"),
+                username.encode("utf-8"),
+                digestmod=hashlib.sha256,
+            ).hexdigest()
+
+            form_data = {
+                "v": settings.POLICY_VERSION,
+                "u": username,
+                "h": userhmac,
+            }
+
+            requests.post(
+                f"{settings.SYNAPSE_SERVER}/_matrix/consent",
+                data=form_data,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            )
+
+        # Mark registration as completed
+        self.registration.status = UserRegistration.STATUS_COMPLETED
+        self.registration.save()
+
+        return super().form_valid(form)
+
+    def dispatch(self, request, *args, **kwargs):
+        token = kwargs.get("token")
+        try:
+            self.registration = UserRegistration.objects.get(token=token)
+        except UserRegistration.DoesNotExist:
+            return render(
+                request, "registration/registration_forbidden.html", status=403
+            )
+
+        if self.registration.status != UserRegistration.STATUS_APPROVED:
+            return render(
+                request, "registration/registration_forbidden.html", status=403
+            )
+
+        return super().dispatch(request, *args, **kwargs)
+
+
+class PasswordSetSuccessView(TemplateView):
+    template_name = "registration/password_set_success.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["matrix_domain"] = settings.MATRIX_DOMAIN
+        return context

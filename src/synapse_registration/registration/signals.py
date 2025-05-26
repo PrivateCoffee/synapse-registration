@@ -3,192 +3,81 @@ from django.dispatch import receiver
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
+from django.urls import reverse
 
 from .models import UserRegistration
-
-import requests
-
-import hashlib
-import hmac
 
 from smtplib import SMTPRecipientsRefused
 
 
 @receiver(post_save, sender=UserRegistration)
 def handle_status_change(sender, instance, created, **kwargs):
-    if not created:
-        status = instance.status
-
-        if status == UserRegistration.STATUS_APPROVED:
-            response = requests.put(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{instance.username}:{settings.MATRIX_DOMAIN}",
-                json={"locked": False},
-                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+    if not created and instance.status == UserRegistration.STATUS_APPROVED:
+        # When an admin approves a registration, send the user a link to set their password
+        if instance.notify:
+            set_password_url = (
+                f"{settings.SITE_URL}{reverse('set_password', args=[instance.token])}"
             )
 
-            if response.status_code != 200:
-                context = {
-                    "matrix_domain": settings.MATRIX_DOMAIN,
-                    "username": instance.username,
-                }
+            context = {
+                "matrix_domain": settings.MATRIX_DOMAIN,
+                "username": instance.username,
+                "mod_message": instance.mod_message,
+                "set_password_url": set_password_url,
+                "logo": getattr(settings, "LOGO_URL", None),
+            }
 
-                subject = f"[{settings.MATRIX_DOMAIN}] Unlock Failed"
+            subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Approved"
 
-                text_content = render_to_string(
-                    "registration/email/txt/unlocking-failed.txt", context
-                )
-
-                msg = EmailMultiAlternatives(
-                    subject,
-                    text_content,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL],
-                )
-
-                try:
-                    html_content = render_to_string(
-                        "registration/email/mjml/unlocking-failed.mjml", context
-                    )
-
-                    msg.attach_alternative(html_content, "text/html")
-
-                except Exception:
-                    pass
-
-                try:
-                    msg.send()
-                except SMTPRecipientsRefused:
-                    pass
-
-            for room in settings.AUTO_JOIN:
-                response = requests.post(
-                    f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/join/{room}",
-                    json={"user_id": f"@{instance.username}:{settings.MATRIX_DOMAIN}"},
-                    headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-                )
-
-            if settings.POLICY_VERSION and settings.FORM_SECRET:
-                userhmac = hmac.HMAC(
-                    settings.FORM_SECRET.encode("utf-8"),
-                    instance.username.encode("utf-8"),
-                    digestmod=hashlib.sha256,
-                ).hexdigest()
-
-                form_data = {
-                    "v": settings.POLICY_VERSION,
-                    "u": instance.username,
-                    "h": userhmac,
-                }
-
-                response = requests.post(
-                    f"{settings.SYNAPSE_SERVER}/_matrix/consent",
-                    data=form_data,
-                    headers={
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                )
-
-            if instance.notify:
-                context = {
-                    "matrix_domain": settings.MATRIX_DOMAIN,
-                    "mod_message": instance.mod_message,
-                    "logo": getattr(settings, "LOGO_URL", None),
-                }
-
-                subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Approved"
-
-                text_content = render_to_string(
-                    "registration/email/txt/registration-approved.txt", context
-                )
-
-                msg = EmailMultiAlternatives(
-                    subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
-                )
-
-                try:
-                    html_content = render_to_string(
-                        "registration/email/mjml/registration-approved.mjml", context
-                    )
-
-                    msg.attach_alternative(html_content, "text/html")
-
-                except Exception:
-                    pass
-
-                try:
-                    msg.send()
-                except SMTPRecipientsRefused:
-                    pass
-
-        elif status == UserRegistration.STATUS_DENIED:
-            response = requests.put(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{instance.username}:{settings.MATRIX_DOMAIN}",
-                json={"deactivated": True},
-                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            text_content = render_to_string(
+                "registration/email/txt/registration-approved.txt", context
             )
 
-            if response.status_code != 200:
-                context = {
-                    "matrix_domain": settings.MATRIX_DOMAIN,
-                    "username": instance.username,
-                }
+            msg = EmailMultiAlternatives(
+                subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
+            )
 
-                subject = f"[{settings.MATRIX_DOMAIN}] Deactivation Failed"
-
-                text_content = render_to_string(
-                    "registration/email/txt/deactivation-failed.txt", context
+            try:
+                html_content = render_to_string(
+                    "registration/email/mjml/registration-approved.mjml", context
                 )
+                msg.attach_alternative(html_content, "text/html")
+            except Exception:
+                pass
 
-                msg = EmailMultiAlternatives(
-                    subject,
-                    text_content,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL],
+            try:
+                msg.send()
+            except SMTPRecipientsRefused:
+                pass
+
+    elif not created and instance.status == UserRegistration.STATUS_DENIED:
+        # When an admin denies a registration, just inform the user via email
+        if instance.notify:
+            context = {
+                "matrix_domain": settings.MATRIX_DOMAIN,
+                "mod_message": instance.mod_message,
+                "logo": getattr(settings, "LOGO_URL", None),
+            }
+
+            subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied"
+
+            text_content = render_to_string(
+                "registration/email/txt/registration-denied.txt", context
+            )
+
+            msg = EmailMultiAlternatives(
+                subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
+            )
+
+            try:
+                html_content = render_to_string(
+                    "registration/email/mjml/registration-denied.mjml", context
                 )
+                msg.attach_alternative(html_content, "text/html")
+            except Exception:
+                pass
 
-                try:
-                    html_content = render_to_string(
-                        "registration/email/mjml/deactivation-failed.mjml", context
-                    )
-
-                    msg.attach_alternative(html_content, "text/html")
-
-                except Exception:
-                    pass
-
-                try:
-                    msg.send()
-                except SMTPRecipientsRefused:
-                    pass
-
-            if instance.notify:
-                context = {
-                    "matrix_domain": settings.MATRIX_DOMAIN,
-                    "mod_message": instance.mod_message,
-                    "logo": getattr(settings, "LOGO_URL", None),
-                }
-
-                subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied"
-
-                text_content = render_to_string(
-                    "registration/email/txt/registration-denied.txt", context
-                )
-
-                msg = EmailMultiAlternatives(
-                    subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
-                )
-
-                try:
-                    html_content = render_to_string(
-                        "registration/email/mjml/registration-denied.mjml", context
-                    )
-
-                    msg.attach_alternative(html_content, "text/html")
-
-                except Exception:
-                    pass
-
-                try:
-                    msg.send()
-                except SMTPRecipientsRefused:
-                    pass
+            try:
+                msg.send()
+            except SMTPRecipientsRefused:
+                pass
