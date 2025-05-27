@@ -51,6 +51,8 @@ class UserRegistrationAdmin(admin.ModelAdmin):
             return format_html('<span style="color: red; font-weight: bold;">❌ Denied</span>')
         elif obj.status == UserRegistration.STATUS_REQUESTED:
             return format_html('<span style="color: orange; font-weight: bold;">⏳ Requested</span>')
+        elif obj.status == UserRegistration.STATUS_COMPLETED:
+            return format_html('<span style="color: blue; font-weight: bold;">✅ Completed</span>')
         else:
             return format_html('<span style="color: gray; font-weight: bold;">🔄 Started</span>')
 
