@@ -53,6 +53,9 @@ The following settings are available:
 - `trust_proxy`: Set to `true` if the registration system is behind a reverse proxy. This ensures the correct IP address is logged.
 - `auto_join`: Optional list of rooms to automatically join users to after registration. The admin user must be in these rooms and have invite permissions.
 - `legal`: Optional list of legal documents to link to in the registration form. Each item must have a `title` and `url`.
+- `retention`: Optional retention periods for registrations.
+  - `started`: Days to keep unverified registrations. Default is 2 days.
+  - `completed`: Days to keep completed/denied registrations. Default is 30 days.
 
 4. **Run migrations**:
 

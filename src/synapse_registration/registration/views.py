@@ -47,19 +47,19 @@ class RateLimitMixin:
 
 class CleanupMixin:
     def dispatch(self, request, *args, **kwargs):
-        # Remove all registrations that are still in the "started" state after 48 hours
+        # Remove all registrations that are still in the "started" state after configured period
         UserRegistration.objects.filter(
             status=UserRegistration.STATUS_STARTED,
-            timestamp__lt=timezone.now() - timedelta(days=2),
+            timestamp__lt=timezone.now() - timedelta(days=settings.RETENTION_STARTED),
         ).delete()
 
-        # Remove all registrations that are denied or approved after 30 days
+        # Remove all registrations that are denied or completed after configured period
         UserRegistration.objects.filter(
             status__in=[
                 UserRegistration.STATUS_DENIED,
-                UserRegistration.STATUS_APPROVED,
+                UserRegistration.STATUS_COMPLETED,
             ],
-            timestamp__lt=timezone.now() - timedelta(days=30),
+            timestamp__lt=timezone.now() - timedelta(days=settings.RETENTION_COMPLETED),
         ).delete()
 
         # Remove all IP blocks that have expired
@@ -103,6 +103,8 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["legal_links"] = settings.LEGAL_LINKS
+        context["retention_started"] = settings.RETENTION_STARTED
+        context["retention_completed"] = settings.RETENTION_COMPLETED
         return context
 
     def form_valid(self, form):

@@ -235,6 +235,10 @@ MJML_HTTPSERVERS = [
 
 LOGO_URL = config.get("logo_url", None)
 
+# Retention periods for registrations (in days)
+RETENTION_STARTED = config.get("retention", {}).get("started", 2)
+RETENTION_COMPLETED = config.get("retention", {}).get("completed", 30)
+
 # Logging configuration
 
 LOGGING = {
