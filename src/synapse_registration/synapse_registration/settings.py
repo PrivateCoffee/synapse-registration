@@ -45,8 +45,6 @@ else:
 
 DEBUG = config.get("debug", False)
 
-config
-
 ALLOWED_HOSTS = config.get("hosts")
 
 TRUST_PROXY = config.get("trust_proxy", False)
@@ -74,6 +72,7 @@ if not all(key in config["synapse"] for key in ["server", "admin_token", "domain
 SYNAPSE_SERVER = config["synapse"]["server"]
 SYNAPSE_ADMIN_TOKEN = config["synapse"]["admin_token"]
 MATRIX_DOMAIN = config["synapse"]["domain"]
+VERIFY_CERT = config["synapse"].get("verify_cert", True)
 
 if "auto_join" in config:
     AUTO_JOIN = config["auto_join"]
@@ -83,6 +82,7 @@ else:
 response = requests.get(
     f"{SYNAPSE_SERVER}/_matrix/client/r0/account/whoami",
     headers={"Authorization": f"Bearer {SYNAPSE_ADMIN_TOKEN}"},
+    verify=VERIFY_CERT,
 )
 
 if response.status_code != 200:
@@ -139,12 +139,26 @@ WSGI_APPLICATION = "synapse_registration.synapse_registration.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Identify path to database file
+
+if "database" in config and "path" in config["database"]:
+    db_path = Path(config["database"]["path"])
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": db_path,
+        }
     }
-}
+
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": "db.sqlite3",
+        }
+    }
 
 
 # Password validation

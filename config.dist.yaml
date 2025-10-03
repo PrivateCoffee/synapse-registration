@@ -2,6 +2,7 @@ synapse:
   admin_token: syt_your_admin_token
   server: https://matrix.your.server
   domain: your.server # i.e. the part after the : in your matrix ID
+  verify_cert: true # set to false (or to the path of your CA bundle) if you use self-signed certificates
 hosts:
   - register.matrix.your.server
 email:

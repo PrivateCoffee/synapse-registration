@@ -39,6 +39,7 @@ The following settings are available:
   - `admin_token`: Access token of an admin user.
   - `server`: Synapse server URL (e.g. `https://matrix.example.com`).
   - `domain`: Matrix server domain (e.g. `example.com`).
+  - `verify_cert`: If your Synapse server uses a self-signed certificate, set this to `false`, or provide the path to your CA bundle.
 - `hosts`: List of domains that the registration system will be accessible at. At least one domain is required.
 - `email`: Email server settings.
   - `host`: SMTP server hostname. Required.
@@ -56,6 +57,8 @@ The following settings are available:
 - `retention`: Optional retention periods for registrations.
   - `started`: Days to keep unverified registrations. Default is 2 days.
   - `completed`: Days to keep completed/denied registrations. Default is 30 days.
+- `database`: Optional database settings.
+  - `path`: Path to the SQLite database file. Defaults to `db.sqlite3` in the current directory.
 
 4. **Run migrations**:
 

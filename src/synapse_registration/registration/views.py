@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from .forms import UsernameForm, EmailForm, RegistrationReasonForm, PasswordForm
 from .models import UserRegistration, IPBlock, EmailBlock
+from .management.commands.cleanup import Command as CleanupCommand
 
 import requests
 
@@ -18,6 +19,9 @@ from ipaddress import ip_network
 
 import logging
 import re
+import hmac
+import hashlib
+
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -47,23 +51,7 @@ class RateLimitMixin:
 
 class CleanupMixin:
     def dispatch(self, request, *args, **kwargs):
-        # Remove all registrations that are still in the "started" state after configured period
-        UserRegistration.objects.filter(
-            status=UserRegistration.STATUS_STARTED,
-            timestamp__lt=timezone.now() - timedelta(days=settings.RETENTION_STARTED),
-        ).delete()
-
-        # Remove all registrations that are denied or completed after configured period
-        UserRegistration.objects.filter(
-            status__in=[
-                UserRegistration.STATUS_DENIED,
-                UserRegistration.STATUS_COMPLETED,
-            ],
-            timestamp__lt=timezone.now() - timedelta(days=settings.RETENTION_COMPLETED),
-        ).delete()
-
-        # Remove all IP blocks that have expired
-        IPBlock.objects.filter(expires__lt=timezone.now()).delete()
+        CleanupCommand().handle()
 
         return super().dispatch(request, *args, **kwargs)
 
@@ -86,6 +74,7 @@ class CheckUsernameView(RateLimitMixin, ContextMixin, FormView):
         response = requests.get(
             f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
             headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            verify=settings.VERIFY_CERT,
         )
 
         if response.json().get("available"):
@@ -243,6 +232,7 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
         response = requests.get(
             f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
             headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            verify=settings.VERIFY_CERT,
         )
 
         if not response.json().get("available"):
@@ -334,6 +324,7 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
         username_response = requests.get(
             f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
             headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            verify=settings.VERIFY_CERT,
         )
 
         if not username_response.json().get("available"):
@@ -351,6 +342,7 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
                 "threepids": [{"medium": "email", "address": self.registration.email}],
             },
             headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+            verify=settings.VERIFY_CERT,
         )
 
         if response.status_code != 201:
@@ -365,13 +357,11 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
                 f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/join/{room}",
                 json={"user_id": f"@{username}:{settings.MATRIX_DOMAIN}"},
                 headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
+                verify=settings.VERIFY_CERT,
             )
 
         # Handle policy acceptance if configured
         if settings.POLICY_VERSION and settings.FORM_SECRET:
-            import hashlib
-            import hmac
-
             userhmac = hmac.HMAC(
                 settings.FORM_SECRET.encode("utf-8"),
                 username.encode("utf-8"),
@@ -390,6 +380,7 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
+                verify=settings.VERIFY_CERT,
             )
 
         # Mark registration as completed
