@@ -109,7 +109,14 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
                 )
                 return self.form_invalid(form)
 
-        if UserRegistration.objects.filter(email=email).exists():
+        if UserRegistration.objects.filter(
+            email=email,
+            status__in=[
+                UserRegistration.STATUS_STARTED,
+                UserRegistration.STATUS_REQUESTED,
+                UserRegistration.STATUS_APPROVED,
+            ],
+        ).exists():
             form.add_error(
                 "email",
                 "There is already a pending or recently accepted registration for this email address. Please get in touch if you need multiple accounts.",
