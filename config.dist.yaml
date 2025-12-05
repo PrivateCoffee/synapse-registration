@@ -14,7 +14,7 @@ email:
 admin:
   email: admin@your.server
 trust_proxy: false
-policy_version: "1.0" # leave unset if users should not automatically accept the Matrix privacy policy
+consent_version: "1.0" # leave unset if users should not automatically accept the Matrix privacy policy
 form_secret: "your-form-secret"
 auto_join:
   - "!your_room_id:your.server"
