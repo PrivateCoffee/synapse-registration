@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
-from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from .models import UserRegistration, EmailBlock, IPBlock, UsernameRule
 
@@ -46,15 +46,15 @@ class UserRegistrationAdmin(admin.ModelAdmin):
 
     def status_symbol(self, obj):
         if obj.status == UserRegistration.STATUS_APPROVED:
-            return format_html('<span style="color: green; font-weight: bold;">✅ Approved</span>')
+            return mark_safe('<span style="color: green; font-weight: bold;">✅ Approved</span>')
         elif obj.status == UserRegistration.STATUS_DENIED:
-            return format_html('<span style="color: red; font-weight: bold;">❌ Denied</span>')
+            return mark_safe('<span style="color: red; font-weight: bold;">❌ Denied</span>')
         elif obj.status == UserRegistration.STATUS_REQUESTED:
-            return format_html('<span style="color: orange; font-weight: bold;">⏳ Requested</span>')
+            return mark_safe('<span style="color: orange; font-weight: bold;">⏳ Requested</span>')
         elif obj.status == UserRegistration.STATUS_COMPLETED:
-            return format_html('<span style="color: blue; font-weight: bold;">✅ Completed</span>')
+            return mark_safe('<span style="color: blue; font-weight: bold;">✅ Completed</span>')
         else:
-            return format_html('<span style="color: gray; font-weight: bold;">🔄 Started</span>')
+            return mark_safe('<span style="color: gray; font-weight: bold;">🔄 Started</span>')
 
     email_verified_symbol.short_description = "Email verified"
     status_symbol.short_description = "Status"
