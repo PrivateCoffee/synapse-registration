@@ -1,0 +1,15 @@
+{% extends "admin/change_form.html" %}
+{% load admin_urls %}
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if original and original.status == 1 and original.email_verified %}
+        <li>
+            <a href="{% url 'admin:registration_userregistration_approve' original.pk %}"
+               class="addlink">Approve</a>
+        </li>
+        <li>
+            <a href="{% url 'admin:registration_userregistration_deny' original.pk %}"
+               class="deletelink">Deny</a>
+        </li>
+    {% endif %}
+{% endblock %}

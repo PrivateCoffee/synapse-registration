@@ -1,0 +1,69 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+{% block content %}
+    <div class="content">
+        <h1>{{ title }}</h1>
+        <p>
+            <strong>User:</strong> @{{ original.username }}
+            <br>
+            <strong>Email:</strong> {{ original.email }}
+            <br>
+            <strong>Email verified:</strong> {{ original.email_verified }}
+            <br>
+            <strong>Status:</strong> {{ original.get_status_display }}
+            <br>
+            <strong>Requested at:</strong> {{ original.timestamp }}
+        </p>
+        <h2>Supplied reason</h2>
+        <div style="padding: 12px;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    background: #fafafa">
+            <pre style="white-space: pre-wrap; margin:0;">{{ original.registration_reason }}</pre>
+        </div>
+        <form method="post" style="margin-top: 16px;">
+            {% csrf_token %}
+            <fieldset class="module aligned">
+                <div class="form-row">
+                    <label for="id_mod_message">
+                        <strong>Message to user (optional):</strong>
+                    </label>
+                    <textarea name="mod_message"
+                              id="id_mod_message"
+                              rows="4"
+                              style="width: min(900px, 100%)">{{ original.mod_message }}</textarea>
+                </div>
+                <div class="form-row">
+                    <label for="id_notify">
+                        <strong>Send email notification:</strong>
+                    </label>
+                    <input type="checkbox"
+                           id="id_notify"
+                           name="notify"
+                           {% if original.notify %}checked{% endif %}>
+                </div>
+            </fieldset>
+            <div class="submit-row">
+                {% if action_name == "approve" %}
+                    <input type="submit"
+                           value="Approve"
+                           style="background:#0a0;
+                                  border-color:#0a0;
+                                  color:#fff">
+                {% else %}
+                    <input type="submit"
+                           value="Deny"
+                           style="background:#c00;
+                                  border-color:#c00;
+                                  color:#fff">
+                {% endif %}
+                <a class="button cancel-link"
+                   href="{% url 'admin:registration_userregistration_change' original.pk %}"
+                   style="background:#aaa;
+                          border-color:#aaa;
+                          color:#fff;
+                          margin-left: 8px">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
