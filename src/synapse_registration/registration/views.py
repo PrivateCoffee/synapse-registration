@@ -1,30 +1,187 @@
-from django.views.generic import FormView, View, TemplateView
-from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
-from django.conf import settings
-from django.utils import timezone
+import hashlib
+import hmac
+import logging
+import re
+import time
 
-from .forms import UsernameForm, EmailForm, RegistrationReasonForm, PasswordForm
-from .models import UserRegistration, IPBlock, EmailBlock
-from .management.commands.cleanup import Command as CleanupCommand
+from datetime import datetime, timedelta
+from ipaddress import ip_network
+from secrets import token_urlsafe
 
 import requests
 
-from secrets import token_urlsafe
-from datetime import timedelta
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic import FormView, TemplateView, View
 from smtplib import SMTPRecipientsRefused
-from ipaddress import ip_network
 
-import logging
-import re
-import hmac
-import hashlib
-
-from datetime import datetime
+from .forms import EmailForm, PasswordForm, RegistrationReasonForm, UsernameForm
+from .management.commands.cleanup import Command as CleanupCommand
+from .models import EmailBlock, IPBlock, UserRegistration
 
 logger = logging.getLogger(__name__)
+
+
+class SynapseError(RuntimeError):
+    pass
+
+
+class SynapseClient:
+    def __init__(
+        self,
+        server: str,
+        admin_token: str,
+        matrix_domain: str,
+        verify_cert: bool = True,
+    ):
+        self.server = server
+        self.admin_token = admin_token
+        self.matrix_domain = matrix_domain
+        self.verify_cert = verify_cert
+        self.session = requests.Session()
+
+    def _headers(self):
+        return {"Authorization": f"Bearer {self.admin_token}"}
+
+    def username_available(self, username: str) -> bool:
+        r = self.session.get(
+            f"{self.server}/_synapse/admin/v1/username_available",
+            params={"username": username},
+            headers=self._headers(),
+            verify=self.verify_cert,
+            timeout=15,
+        )
+        if r.status_code != 200:
+            raise SynapseError(f"username_available failed: {r.status_code} {r.text}")
+        return bool(r.json().get("available"))
+
+    def create_user(self, username: str, password: str, email: str) -> None:
+        r = self.session.put(
+            f"{self.server}/_synapse/admin/v2/users/@{username}:{self.matrix_domain}",
+            json={
+                "password": password,
+                "displayname": username,
+                "threepids": [{"medium": "email", "address": email}],
+            },
+            headers=self._headers(),
+            verify=self.verify_cert,
+            timeout=30,
+        )
+        if r.status_code != 201:
+            raise SynapseError(f"create_user failed: {r.status_code} {r.text}")
+
+    def join_room(self, room_id: str, user_id: str) -> None:
+        r = self.session.post(
+            f"{self.server}/_synapse/admin/v1/join/{room_id}",
+            json={"user_id": user_id},
+            headers=self._headers(),
+            verify=self.verify_cert,
+            timeout=30,
+        )
+        if r.status_code not in (200, 201):
+            raise SynapseError(f"join_room failed: {r.status_code} {r.text}")
+
+    def get_user(self, user_id: str) -> dict:
+        r = self.session.get(
+            f"{self.server}/_synapse/admin/v2/users/{user_id}",
+            headers=self._headers(),
+            verify=self.verify_cert,
+            timeout=15,
+        )
+        if r.status_code != 200:
+            raise SynapseError(f"get_user failed: {r.status_code} {r.text}")
+        return r.json()
+
+    def get_user_consent_ts(self, user_id: str) -> int | None:
+        return self.get_user(user_id).get("consent_ts")
+
+
+class ConsentError(RuntimeError):
+    pass
+
+
+def _user_hmac(form_secret: str, username: str) -> str:
+    return hmac.new(
+        form_secret.encode("utf-8"),
+        username.encode("utf-8"),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+
+
+def submit_consent(
+    *,
+    synapse_server: str,
+    policy_version: str,
+    form_secret: str,
+    username: str,
+    verify_cert: bool,
+    session: requests.Session,
+) -> None:
+    payload = {
+        "v": policy_version,
+        "u": username,
+        "h": _user_hmac(form_secret, username),
+    }
+    r = session.post(
+        f"{synapse_server}/_matrix/consent",
+        data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        allow_redirects=True,
+        verify=verify_cert,
+        timeout=20,
+    )
+
+    if r.status_code >= 500:
+        raise ConsentError(f"Consent submission server error: {r.status_code}")
+    if r.status_code != 200:
+        raise ConsentError(f"Consent submission failed: {r.status_code} {r.text}")
+
+
+def submit_and_verify_consent_via_consent_ts(
+    *,
+    synapse: SynapseClient,
+    synapse_server: str,
+    policy_version: str,
+    form_secret: str,
+    username: str,
+    user_id: str,
+    verify_cert: bool,
+    retries: int = 6,
+    retry_delay: float = 0.4,
+) -> int:
+    before = synapse.get_user_consent_ts(user_id)
+    submit_consent(
+        synapse_server=synapse_server,
+        policy_version=policy_version,
+        form_secret=form_secret,
+        username=username,
+        verify_cert=verify_cert,
+        session=synapse.session,
+    )
+
+    last = None
+    for _ in range(retries):
+        last = synapse.get_user_consent_ts(user_id)
+        if last is not None and (before is None or last >= before):
+            return last
+        time.sleep(retry_delay)
+
+    raise ConsentError(
+        f"Consent not reflected in consent_ts (before={before}, after={last})"
+    )
+
+
+def synapse_client() -> SynapseClient:
+    return SynapseClient(
+        server=settings.SYNAPSE_SERVER,
+        admin_token=settings.SYNAPSE_ADMIN_TOKEN,
+        matrix_domain=settings.MATRIX_DOMAIN,
+        verify_cert=settings.VERIFY_CERT,
+    )
 
 
 class ContextMixin:
@@ -40,7 +197,9 @@ class RateLimitMixin:
         if not settings.TRUST_PROXY:
             ip_address = request.META.get("REMOTE_ADDR")
         else:
-            ip_address = request.META.get("HTTP_X_FORWARDED_FOR")
+            ip_address = request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get(
+                "REMOTE_ADDR"
+            )
 
         for block in IPBlock.objects.filter(expires__gt=timezone.now()):
             if ip_network(ip_address) in ip_network(f"{block.network}/{block.netmask}"):
@@ -52,7 +211,6 @@ class RateLimitMixin:
 class CleanupMixin:
     def dispatch(self, request, *args, **kwargs):
         CleanupCommand().handle()
-
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -71,18 +229,22 @@ class CheckUsernameView(RateLimitMixin, ContextMixin, FormView):
 
     def form_valid(self, form):
         username = form.cleaned_data["username"]
-        response = requests.get(
-            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
-            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-            verify=settings.VERIFY_CERT,
-        )
+        try:
+            available = synapse_client().username_available(username)
+        except Exception as e:
+            logger.exception("Synapse username availability check failed")
+            form.add_error(
+                None,
+                "Unable to check username availability right now. Please try again later.",
+            )
+            return self.form_invalid(form)
 
-        if response.json().get("available"):
+        if available:
             self.request.session["username"] = username
             return super().form_valid(form)
-        else:
-            form.add_error("username", "Username is not available.")
-            return self.form_invalid(form)
+
+        form.add_error("username", "Username is not available.")
+        return self.form_invalid(form)
 
 
 class EmailInputView(RateLimitMixin, ContextMixin, FormView):
@@ -105,7 +267,8 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             if re.match(block.regex, email):
                 form.add_error(
                     "email",
-                    f"This email address cannot be used to register. {f'Reason: {block.reason}' if block.reason else ''}",
+                    f"This email address cannot be used to register. "
+                    f"{f'Reason: {block.reason}' if block.reason else ''}",
                 )
                 return self.form_invalid(form)
 
@@ -119,16 +282,14 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
         ).exists():
             form.add_error(
                 "email",
-                "There is already a pending or recently accepted registration for this email address. Please get in touch if you need multiple accounts.",
+                "There is already a pending or recently accepted registration for this email address. "
+                "Please get in touch if you need multiple accounts.",
             )
             return self.form_invalid(form)
 
-        ip_address = None
-
+        ip_address = self.request.META.get("REMOTE_ADDR")
         if settings.TRUST_PROXY:
-            ip_address = self.request.META.get("HTTP_X_FORWARDED_FOR")
-
-        ip_address = ip_address or self.request.META.get("REMOTE_ADDR")
+            ip_address = self.request.META.get("HTTP_X_FORWARDED_FOR") or ip_address
 
         if (
             UserRegistration.objects.filter(
@@ -139,10 +300,16 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
         ):
             return render(self.request, "registration/ratelimit.html", status=429)
 
+        username = self.request.session.get("username")
+        if not username:
+            return render(
+                self.request, "registration/registration_forbidden.html", status=403
+            )
+
         token = token_urlsafe(32)
 
         registration = UserRegistration.objects.create(
-            username=self.request.session["username"],
+            username=username,
             email=email,
             token=token,
             ip_address=ip_address,
@@ -152,41 +319,30 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             reverse_lazy("verify_email", args=[token])
         )
 
+        context = {
+            "verification_link": verification_link,
+            "matrix_domain": settings.MATRIX_DOMAIN,
+            "logo": getattr(settings, "LOGO_URL", None),
+            "current_year": datetime.now().year,
+        }
+        subject = f"[{settings.MATRIX_DOMAIN}] Verify your email address"
+        text_content = render_to_string(
+            "registration/email/txt/email-verification.txt", context
+        )
+
+        msg = EmailMultiAlternatives(
+            subject, text_content, settings.DEFAULT_FROM_EMAIL, [email]
+        )
         try:
-            context = {
-                "verification_link": verification_link,
-                "matrix_domain": settings.MATRIX_DOMAIN,
-                "logo": getattr(settings, "LOGO_URL", None),
-                "current_year": datetime.now().year,
-            }
-
-            subject = f"[{settings.MATRIX_DOMAIN}] Verify your email address"
-
-            text_content = render_to_string(
-                "registration/email/txt/email-verification.txt", context
+            html_content = render_to_string(
+                "registration/email/mjml/email-verification.mjml", context
             )
+            msg.attach_alternative(html_content, "text/html")
+        except Exception:
+            pass
 
-            msg = EmailMultiAlternatives(
-                subject, text_content, settings.DEFAULT_FROM_EMAIL, [email]
-            )
-
-            try:
-                html_content = render_to_string(
-                    "registration/email/mjml/email-verification.mjml", context
-                )
-
-                msg.attach_alternative(html_content, "text/html")
-
-            except Exception:
-                pass
-
-            try:
-                msg.send()
-            except SMTPRecipientsRefused:
-                pass
-
-            return render(self.request, "registration/email_sent.html")
-
+        try:
+            msg.send()
         except SMTPRecipientsRefused:
             form.add_error(
                 "email",
@@ -195,19 +351,21 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             registration.delete()
             return self.form_invalid(form)
 
+        return render(self.request, "registration/email_sent.html")
+
 
 class VerifyEmailView(RateLimitMixin, View):
     def get(self, request, token):
         try:
             registration = UserRegistration.objects.get(token=token)
         except UserRegistration.DoesNotExist:
-            logger.warning(f"Invalid token: {token}")
+            logger.warning("Invalid token: %s", token)
             return render(
                 request, "registration/registration_forbidden.html", status=403
             )
 
         if registration.status != UserRegistration.STATUS_STARTED:
-            logger.warning(f"Invalid status: {registration.status}")
+            logger.warning("Invalid status: %s", registration.status)
             return render(
                 request, "registration/registration_forbidden.html", status=403
             )
@@ -228,95 +386,111 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
         context["legal_links"] = settings.LEGAL_LINKS
         return context
 
-    def form_valid(self, form):
-        registration_reason = form.cleaned_data["registration_reason"]
+    def dispatch(self, request, *args, **kwargs):
         registration = get_object_or_404(
-            UserRegistration, id=self.request.session.get("registration")
-        )
-        username = registration.username
-
-        # Assert that the username is available
-        response = requests.get(
-            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
-            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-            verify=settings.VERIFY_CERT,
+            UserRegistration, id=request.session.get("registration")
         )
 
-        if not response.json().get("available"):
-            logger.warning(f"Username not available: {username}")
+        if (
+            registration.status != UserRegistration.STATUS_STARTED
+            or not registration.email_verified
+        ):
+            logger.warning(
+                "Invalid status/email_verified: %s/%s",
+                registration.status,
+                registration.email_verified,
+            )
             return render(
-                self.request, "registration/registration_forbidden.html", status=403
+                request, "registration/registration_forbidden.html", status=403
             )
 
-        registration.status = UserRegistration.STATUS_REQUESTED
-        registration.registration_reason = registration_reason
-        registration.save()
+        self.registration = registration
+        return super().dispatch(request, *args, **kwargs)
 
+    def form_valid(self, form):
+        registration_reason = form.cleaned_data["registration_reason"]
+        username = self.registration.username
+
+        # Assert username still available
         try:
-            self.request.session.pop("registration")
-            self.request.session.pop("username")
-        except KeyError:
-            pass
+            if not synapse_client().username_available(username):
+                logger.warning("Username not available at completion: %s", username)
+                return render(
+                    self.request, "registration/registration_forbidden.html", status=403
+                )
+        except Exception:
+            logger.exception("Synapse username availability check failed at completion")
+            return render(self.request, "error_page.html", status=503)
+
+        self.registration.status = UserRegistration.STATUS_REQUESTED
+        self.registration.registration_reason = registration_reason
+        self.registration.save()
+
+        # Clear session markers
+        for k in ("registration", "username"):
+            try:
+                self.request.session.pop(k)
+            except KeyError:
+                pass
 
         admin_url = self.request.build_absolute_uri(reverse_lazy("admin:index"))
 
         context = {
             "matrix_domain": settings.MATRIX_DOMAIN,
             "username": username,
-            "email": registration.email,
+            "email": self.registration.email,
             "registration_reason": registration_reason,
             "logo": getattr(settings, "LOGO_URL", None),
             "admin_url": admin_url,
         }
 
         subject = f"[{settings.MATRIX_DOMAIN}] Registration Requested"
-
         text_content = render_to_string(
             "registration/email/txt/new-registration.txt", context
         )
-
         msg = EmailMultiAlternatives(
             subject,
             text_content,
             settings.DEFAULT_FROM_EMAIL,
             [settings.ADMIN_EMAIL],
         )
-
         try:
             html_content = render_to_string(
                 "registration/email/mjml/new-registration.mjml", context
             )
             msg.attach_alternative(html_content, "text/html")
         except Exception as e:
-            logger.error(f"Failed to render MJML: {e}")
+            logger.error("Failed to render MJML: %s", e)
 
         try:
             msg.send()
         except SMTPRecipientsRefused as e:
-            logger.error(f"Failed to send email: {e}")
+            logger.error("Failed to send email: %s", e)
 
         return render(self.request, "registration/registration_pending.html")
-
-    def dispatch(self, request, *args, **kwargs):
-        self.registration = get_object_or_404(
-            UserRegistration, id=self.request.session.get("registration")
-        )
-        if (
-            self.registration.status != UserRegistration.STATUS_STARTED
-            or not self.registration.email_verified
-        ):
-            logger.warning(f"Invalid status: {self.registration.status}")
-
-            return render(
-                request, "registration/registration_forbidden.html", status=403
-            )
-        return super().dispatch(request, *args, **kwargs)
 
 
 class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
     template_name = "registration/set_password.html"
     form_class = PasswordForm
     success_url = reverse_lazy("password_set_success")
+
+    def dispatch(self, request, *args, **kwargs):
+        token = kwargs.get("token")
+        try:
+            registration = UserRegistration.objects.get(token=token)
+        except UserRegistration.DoesNotExist:
+            return render(
+                request, "registration/registration_forbidden.html", status=403
+            )
+
+        if registration.status != UserRegistration.STATUS_APPROVED:
+            return render(
+                request, "registration/registration_forbidden.html", status=403
+            )
+
+        self.registration = registration
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -326,91 +500,67 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
     def form_valid(self, form):
         password = form.cleaned_data["password1"]
         username = self.registration.username
+        user_id = f"@{username}:{settings.MATRIX_DOMAIN}"
 
-        # Assert one last time that the username is available
-        username_response = requests.get(
-            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/username_available?username={username}",
-            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-            verify=settings.VERIFY_CERT,
-        )
+        client = synapse_client()
 
-        if not username_response.json().get("available"):
-            logger.warning(f"Username not available: {username}")
-            return render(
-                self.request, "registration/registration_forbidden.html", status=403
+        # One last username availability check
+        try:
+            if not client.username_available(username):
+                logger.warning("Username not available at set-password: %s", username)
+                return render(
+                    self.request, "registration/registration_forbidden.html", status=403
+                )
+        except Exception:
+            logger.exception(
+                "Synapse username availability check failed at set-password"
             )
+            return render(self.request, "error_page.html", status=503)
 
-        # Create the user account with the provided password
-        response = requests.put(
-            f"{settings.SYNAPSE_SERVER}/_synapse/admin/v2/users/@{username}:{settings.MATRIX_DOMAIN}",
-            json={
-                "password": password,
-                "displayname": username,
-                "threepids": [{"medium": "email", "address": self.registration.email}],
-            },
-            headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-            verify=settings.VERIFY_CERT,
-        )
-
-        if response.status_code != 201:
+        # Create user
+        try:
+            client.create_user(
+                username=username, password=password, email=self.registration.email
+            )
+        except SynapseError:
+            logger.exception("Failed to create Synapse user")
             form.add_error(
                 None, "Failed to create your account. Please try again later."
             )
             return self.form_invalid(form)
 
-        # Auto-join rooms if configured
-        for room in settings.AUTO_JOIN:
-            requests.post(
-                f"{settings.SYNAPSE_SERVER}/_synapse/admin/v1/join/{room}",
-                json={"user_id": f"@{username}:{settings.MATRIX_DOMAIN}"},
-                headers={"Authorization": f"Bearer {settings.SYNAPSE_ADMIN_TOKEN}"},
-                verify=settings.VERIFY_CERT,
-            )
+        # Auto-join rooms
+        for room in getattr(settings, "AUTO_JOIN", []):
+            try:
+                client.join_room(room_id=room, user_id=user_id)
+            except SynapseError:
+                logger.exception("Auto-join failed for room=%s user=%s", room, user_id)
 
-        # Handle policy acceptance if configured
+        # Consent acceptance: submit and verify
         if settings.POLICY_VERSION and settings.FORM_SECRET:
-            userhmac = hmac.HMAC(
-                settings.FORM_SECRET.encode("utf-8"),
-                username.encode("utf-8"),
-                digestmod=hashlib.sha256,
-            ).hexdigest()
+            try:
+                consent_ts = submit_and_verify_consent_via_consent_ts(
+                    synapse=client,
+                    synapse_server=settings.SYNAPSE_SERVER,
+                    policy_version=settings.POLICY_VERSION,
+                    form_secret=settings.FORM_SECRET,
+                    username=username,
+                    user_id=user_id,
+                    verify_cert=settings.VERIFY_CERT,
+                )
+                logger.info(
+                    "Consent accepted for %s at consent_ts=%s", user_id, consent_ts
+                )
+            except (ConsentError, SynapseError):
+                logger.exception(
+                    "Consent submission/verification failed for %s", user_id
+                )
 
-            form_data = {
-                "v": settings.POLICY_VERSION,
-                "u": username,
-                "h": userhmac,
-            }
-
-            requests.post(
-                f"{settings.SYNAPSE_SERVER}/_matrix/consent",
-                data=form_data,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                verify=settings.VERIFY_CERT,
-            )
-
-        # Mark registration as completed
+        # Mark registration complete
         self.registration.status = UserRegistration.STATUS_COMPLETED
         self.registration.save()
 
         return super().form_valid(form)
-
-    def dispatch(self, request, *args, **kwargs):
-        token = kwargs.get("token")
-        try:
-            self.registration = UserRegistration.objects.get(token=token)
-        except UserRegistration.DoesNotExist:
-            return render(
-                request, "registration/registration_forbidden.html", status=403
-            )
-
-        if self.registration.status != UserRegistration.STATUS_APPROVED:
-            return render(
-                request, "registration/registration_forbidden.html", status=403
-            )
-
-        return super().dispatch(request, *args, **kwargs)
 
 
 class PasswordSetSuccessView(TemplateView):
