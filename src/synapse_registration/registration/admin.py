@@ -133,7 +133,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
                 "This registration cannot be approved in its current state.",
                 level=messages.ERROR,
             )
-            return redirect(f"../{object_id}/change/")
+            return redirect
 
         if request.method == "POST":
             obj.mod_message = request.POST.get("mod_message", obj.mod_message or "")
@@ -148,7 +148,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
                 f"Approved registration for {obj.username}.",
                 level=messages.SUCCESS,
             )
-            return redirect(f"../{object_id}/change/")
+            return redirect("admin:registration_userregistration_changelist")
 
         context = {
             **self.admin_site.each_context(request),
@@ -170,7 +170,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
                 "This registration cannot be denied in its current state.",
                 level=messages.ERROR,
             )
-            return redirect(f"../{object_id}/change/")
+            return redirect("admin:registration_userregistration_changelist")
 
         if request.method == "POST":
             obj.mod_message = request.POST.get("mod_message", obj.mod_message or "")
@@ -185,7 +185,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
                 f"Denied registration for {obj.username}.",
                 level=messages.SUCCESS,
             )
-            return redirect(f"../{object_id}/change/")
+            return redirect("admin:registration_userregistration_changelist")
 
         context = {
             **self.admin_site.each_context(request),
