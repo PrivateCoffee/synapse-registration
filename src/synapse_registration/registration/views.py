@@ -21,7 +21,8 @@ from smtplib import SMTPRecipientsRefused
 
 from .forms import EmailForm, PasswordForm, RegistrationReasonForm, UsernameForm
 from .management.commands.cleanup import Command as CleanupCommand
-from .models import EmailBlock, IPBlock, UserRegistration
+from .models import EmailBlock, IPBlock, UserRegistration, RegistrationEvent
+from .audit import log_event
 
 logger = logging.getLogger(__name__)
 
@@ -292,11 +293,11 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             ip_address = self.request.META.get("HTTP_X_FORWARDED_FOR") or ip_address
 
         if (
-            UserRegistration.objects.filter(
+            RegistrationEvent.objects.filter(
                 ip_address=ip_address,
-                timestamp__gte=timezone.now() - timedelta(hours=24),
-            ).count()
-            >= 5
+                type=RegistrationEvent.Type.EMAIL_SUBMITTED,
+                occurred_at__gt=timezone.now() - timedelta(hours=settings.EMAIL_SUBMISSION_RATE_LIMIT_HOURS),
+            ).count() >= settings.EMAIL_SUBMISSION_RATE_LIMIT
         ):
             return render(self.request, "registration/ratelimit.html", status=429)
 
@@ -313,6 +314,21 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             email=email,
             token=token,
             ip_address=ip_address,
+        )
+
+        log_event(
+            registration=registration,
+            type=RegistrationEvent.Type.STARTED,
+            request=self.request,
+            trust_proxy=settings.TRUST_PROXY,
+        )
+
+        log_event(
+            registration=registration,
+            type=RegistrationEvent.Type.EMAIL_SUBMITTED,
+            request=self.request,
+            trust_proxy=settings.TRUST_PROXY,
+            email=email,
         )
 
         verification_link = self.request.build_absolute_uri(
@@ -343,7 +359,20 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
 
         try:
             msg.send()
-        except SMTPRecipientsRefused:
+            log_event(
+                registration=registration,
+                type=RegistrationEvent.Type.EMAIL_VERIFICATION_SENT,
+                request=self.request,
+                trust_proxy=settings.TRUST_PROXY,
+            )
+        except SMTPRecipientsRefused as e:
+            log_event(
+                registration=registration,
+                type=RegistrationEvent.Type.EMAIL_VERIFICATION_SEND_FAILED,
+                request=self.request,
+                trust_proxy=settings.TRUST_PROXY,
+                error=str(e),
+            )
             form.add_error(
                 "email",
                 "Your email address is invalid, not accepting mail, or blocked by our mail server.",
@@ -373,6 +402,14 @@ class VerifyEmailView(RateLimitMixin, View):
         request.session["registration"] = registration.id
         registration.email_verified = True
         registration.save()
+
+        log_event(
+            registration=registration,
+            type=RegistrationEvent.Type.EMAIL_VERIFIED,
+            request=request,
+            trust_proxy=settings.TRUST_PROXY,
+        )
+
         return redirect("complete_registration")
 
 
@@ -422,9 +459,24 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
             logger.exception("Synapse username availability check failed at completion")
             return render(self.request, "error_page.html", status=503)
 
+        log_event(
+            registration=self.registration,
+            type=RegistrationEvent.Type.REGISTRATION_REASON_SUBMITTED,
+            request=self.request,
+            trust_proxy=settings.TRUST_PROXY,
+            length=len(registration_reason or ""),
+        )
+
         self.registration.status = UserRegistration.STATUS_REQUESTED
         self.registration.registration_reason = registration_reason
         self.registration.save()
+
+        log_event(
+            registration=self.registration,
+            type=RegistrationEvent.Type.REQUESTED,
+            request=self.request,
+            trust_proxy=settings.TRUST_PROXY,
+        )
 
         # Clear session markers
         for k in ("registration", "username"):
@@ -489,6 +541,13 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
                 request, "registration/registration_forbidden.html", status=403
             )
 
+        log_event(
+            registration=registration,
+            type=RegistrationEvent.Type.PASSWORD_SET_FORM_OPENED,
+            request=request,
+            trust_proxy=settings.TRUST_PROXY,
+        )
+
         self.registration = registration
         return super().dispatch(request, *args, **kwargs)
 
@@ -519,11 +578,24 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
 
         # Create user
         try:
-            client.create_user(
-                username=username, password=password, email=self.registration.email
+            # TODO: Make this return something we can log?
+            client.create_user(username=username, password=password, email=self.registration.email)
+            log_event(
+                registration=self.registration,
+                type=RegistrationEvent.Type.USER_CREATED,
+                request=self.request,
+                trust_proxy=settings.TRUST_PROXY,
+                user_id=user_id,
             )
-        except SynapseError:
-            logger.exception("Failed to create Synapse user")
+        except SynapseError as e:
+            log_event(
+                registration=self.registration,
+                type=RegistrationEvent.Type.USER_CREATE_FAILED,
+                request=self.request,
+                trust_proxy=settings.TRUST_PROXY,
+                user_id=user_id,
+                error=str(e),
+            )
             form.add_error(
                 None, "Failed to create your account. Please try again later."
             )
@@ -533,8 +605,24 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
         for room in getattr(settings, "AUTO_JOIN", []):
             try:
                 client.join_room(room_id=room, user_id=user_id)
-            except SynapseError:
-                logger.exception("Auto-join failed for room=%s user=%s", room, user_id)
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.AUTOJOIN_OK,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    room_id=room,
+                    user_id=user_id,
+                )
+            except SynapseError as e:
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.AUTOJOIN_FAIL,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    room_id=room,
+                    user_id=user_id,
+                    error=str(e),
+                )
 
         # Consent acceptance: submit and verify
         if settings.POLICY_VERSION and settings.FORM_SECRET:
@@ -548,17 +636,37 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
                     user_id=user_id,
                     verify_cert=settings.VERIFY_CERT,
                 )
-                logger.info(
-                    "Consent accepted for %s at consent_ts=%s", user_id, consent_ts
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.CONSENT_OK,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    user_id=user_id,
+                    consent_ts=consent_ts,
+                    policy_version=settings.POLICY_VERSION,
                 )
-            except (ConsentError, SynapseError):
-                logger.exception(
-                    "Consent submission/verification failed for %s", user_id
+            except (ConsentError, SynapseError) as e:
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.CONSENT_FAIL,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    user_id=user_id,
+                    error=str(e),
+                    policy_version=settings.POLICY_VERSION,
                 )
 
         # Mark registration complete
         self.registration.status = UserRegistration.STATUS_COMPLETED
         self.registration.save()
+
+        log_event(
+            registration=self.registration,
+            type=RegistrationEvent.Type.COMPLETED,
+            request=self.request,
+            trust_proxy=settings.TRUST_PROXY,
+            user_id=user_id,
+        )
 
         return super().form_valid(form)
 

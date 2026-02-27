@@ -6,8 +6,17 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from django.conf import settings
+from django.db.models import OuterRef, Subquery, DateTimeField
 
-from .models import UserRegistration, EmailBlock, IPBlock, UsernameRule
+from .audit import log_event
+from .models import (
+    UserRegistration,
+    EmailBlock,
+    IPBlock,
+    UsernameRule,
+    RegistrationEvent,
+)
 
 admin.site.site_header = "Synapse Registration Administration"
 admin.site.site_title = "Synapse Registration Administration"
@@ -16,21 +25,51 @@ admin.site.index_title = "Welcome to the Synapse Registration Administration"
 admin.site.unregister(Group)
 
 
+class RegistrationEventInline(admin.TabularInline):
+    model = RegistrationEvent
+    extra = 0
+    can_delete = False
+    readonly_fields = ("occurred_at", "type", "actor", "ip_address", "data")
+    fields = ("occurred_at", "type", "actor", "ip_address", "data")
+    ordering = ("occurred_at",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(RegistrationEvent)
+class RegistrationEventAdmin(admin.ModelAdmin):
+    list_display = ("registration", "type", "occurred_at", "actor", "ip_address")
+    list_filter = ("type", "occurred_at")
+    search_fields = ("registration__username", "registration__email", "ip_address")
+    readonly_fields = (
+        "registration",
+        "type",
+        "occurred_at",
+        "actor",
+        "ip_address",
+        "data",
+    )
+
+
 @admin.register(UserRegistration)
 class UserRegistrationAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "username",
         "email",
         "email_verified_symbol",
         "registration_reason",
         "status_badge",
-        "timestamp",
+        "started_at",
         "ip_address",
         "actions_column",
     )
-    list_filter = ("status", "email_verified", "timestamp")
+    list_filter = ("status", "email_verified")
     search_fields = ("username", "email", "ip_address", "registration_reason")
-    ordering = ("-timestamp",)
+    ordering = ("-id",)
+
+    inlines = [RegistrationEventInline]
 
     # Prevent “edit everything” behavior
     readonly_fields = (
@@ -40,7 +79,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
         "status",
         "registration_reason",
         "ip_address",
-        "timestamp",
+        "started_at",
         "token",
     )
     fieldsets = (
@@ -50,7 +89,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
         ),
         (
             "Registration Details",
-            {"fields": ("registration_reason", "ip_address", "timestamp")},
+            {"fields": ("registration_reason", "ip_address", "started_at")},
         ),
         ("Moderation Response", {"fields": ("mod_message", "notify")}),
         ("Technical Details", {"classes": ("collapse",), "fields": ("token",)}),
@@ -58,6 +97,28 @@ class UserRegistrationAdmin(admin.ModelAdmin):
 
     # Disable bulk actions that can bypass workflows
     actions = None
+
+    # Get start timestamp from audit trail
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        started_event_sq = (
+            RegistrationEvent.objects.filter(
+                registration=OuterRef("pk"),
+                type=RegistrationEvent.Type.STARTED,
+            )
+            .order_by("occurred_at")
+            .values("occurred_at")[:1]
+        )
+
+        # Annotate with a name we can reference for ordering in @admin.display
+        return qs.annotate(
+            _started_at=Subquery(started_event_sq, output_field=DateTimeField())
+        )
+
+    @admin.display(description="Started at", ordering="_started_at")
+    def started_at(self, obj):
+        return getattr(obj, "_started_at", None)
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -142,7 +203,16 @@ class UserRegistrationAdmin(admin.ModelAdmin):
             obj.status = UserRegistration.STATUS_APPROVED
             obj.save()
 
-            # TODO: audit trail hook, e.g. create event "approved" with actor=request.user
+            log_event(
+                registration=obj,
+                type=RegistrationEvent.Type.APPROVED,
+                request=request,
+                actor=request.user,
+                trust_proxy=getattr(settings, "TRUST_PROXY", False),
+                mod_message=obj.mod_message,
+                notify=obj.notify,
+            )
+
             self.message_user(
                 request,
                 f"Approved registration for {obj.username}.",
@@ -179,7 +249,16 @@ class UserRegistrationAdmin(admin.ModelAdmin):
             obj.status = UserRegistration.STATUS_DENIED
             obj.save()
 
-            # TODO: audit trail hook
+            log_event(
+                registration=obj,
+                type=RegistrationEvent.Type.DENIED,
+                request=request,
+                actor=request.user,
+                trust_proxy=getattr(settings, "TRUST_PROXY", False),
+                mod_message=obj.mod_message,
+                notify=obj.notify,
+            )
+
             self.message_user(
                 request,
                 f"Denied registration for {obj.username}.",

@@ -288,3 +288,10 @@ LOGGING = {
         },
     },
 }
+
+# Rate limiting configuration
+# Limits the number of email submissions per IP address within a certain time window to prevent abuse.
+# The default is 3 submissions per 24 hours, but this can be adjusted in the configuration file.
+
+EMAIL_SUBMISSION_RATE_LIMIT = int(config.get("rate_limit", {}).get("email_submission", 3))
+EMAIL_SUBMISSION_RATE_LIMIT_HOURS = int(config.get("rate_limit", {}).get("email_submission_hours", 24))
