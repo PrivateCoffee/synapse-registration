@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 
 
 class SynapseError(RuntimeError):
-    pass
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class SynapseClient:
@@ -58,7 +60,10 @@ class SynapseClient:
             timeout=15,
         )
         if r.status_code != 200:
-            raise SynapseError(f"username_available failed: {r.status_code} {r.text}")
+            raise SynapseError(
+                f"username_available failed: {r.status_code} {r.text}",
+                status_code=r.status_code,
+            )
         return bool(r.json().get("available"))
 
     def create_user(self, username: str, password: str, email: str) -> None:
@@ -74,7 +79,10 @@ class SynapseClient:
             timeout=30,
         )
         if r.status_code != 201:
-            raise SynapseError(f"create_user failed: {r.status_code} {r.text}")
+            raise SynapseError(
+                f"create_user failed: {r.status_code} {r.text}",
+                status_code=r.status_code,
+            )
 
     def join_room(self, room_id: str, user_id: str) -> None:
         r = self.session.post(
@@ -85,7 +93,9 @@ class SynapseClient:
             timeout=30,
         )
         if r.status_code not in (200, 201):
-            raise SynapseError(f"join_room failed: {r.status_code} {r.text}")
+            raise SynapseError(
+                f"join_room failed: {r.status_code} {r.text}", status_code=r.status_code
+            )
 
     def get_user(self, user_id: str) -> dict:
         r = self.session.get(
@@ -95,13 +105,17 @@ class SynapseClient:
             timeout=15,
         )
         if r.status_code != 200:
-            raise SynapseError(f"get_user failed: {r.status_code} {r.text}")
+            raise SynapseError(
+                f"get_user failed: {r.status_code} {r.text}", status_code=r.status_code
+            )
         return r.json()
 
     def get_user_consent_ts(self, user_id: str) -> int | None:
         return self.get_user(user_id).get("consent_ts")
 
-    def send_room_message(self, room_id: str, body: str, msgtype: str = "m.text") -> None:
+    def send_room_message(
+        self, room_id: str, body: str, msgtype: str = "m.text"
+    ) -> None:
         txn_id = str(uuid.uuid4())
         r = self.session.put(
             f"{self.server}/_matrix/client/v3/rooms/{room_id}/send/m.room.message/{txn_id}",
@@ -111,7 +125,10 @@ class SynapseClient:
             timeout=15,
         )
         if r.status_code not in (200, 201):
-            raise SynapseError(f"send_room_message failed: {r.status_code} {r.text}")
+            raise SynapseError(
+                f"send_room_message failed: {r.status_code} {r.text}",
+                status_code=r.status_code,
+            )
 
     def create_dm_room(self, user_id: str) -> str:
         r = self.session.post(
@@ -126,8 +143,40 @@ class SynapseClient:
             timeout=20,
         )
         if r.status_code not in (200, 201):
-            raise SynapseError(f"create_dm_room failed: {r.status_code} {r.text}")
+            raise SynapseError(
+                f"create_dm_room failed: {r.status_code} {r.text}",
+                status_code=r.status_code,
+            )
         return r.json()["room_id"]
+
+    def join_room_client(self, room_id_or_alias: str) -> None:
+        # This will also accept an invite if there is one
+        r = self.session.post(
+            f"{self.server}/_matrix/client/v3/join/{room_id_or_alias}",
+            json={},
+            headers=self._headers(),
+            verify=self.verify_cert,
+            timeout=20,
+        )
+        if r.status_code not in (200, 201):
+            raise SynapseError(
+                f"join_room_client failed: {r.status_code} {r.text}",
+                status_code=r.status_code,
+            )
+
+    def send_room_message_with_join_fallback(
+        self, room_id: str, body: str, msgtype: str = "m.text"
+    ) -> None:
+        try:
+            self.send_room_message(room_id, body, msgtype=msgtype)
+            return
+        except SynapseError as e:
+            if e.status_code not in (403, 404):
+                raise
+
+        # Try to accept invite/join, then retry once
+        self.join_room_client(room_id)
+        self.send_room_message(room_id, body, msgtype=msgtype)
 
 
 class ConsentError(RuntimeError):
@@ -325,8 +374,10 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             RegistrationEvent.objects.filter(
                 ip_address=ip_address,
                 type=RegistrationEvent.Type.EMAIL_SUBMITTED,
-                occurred_at__gt=timezone.now() - timedelta(hours=settings.EMAIL_SUBMISSION_RATE_LIMIT_HOURS),
-            ).count() >= settings.EMAIL_SUBMISSION_RATE_LIMIT
+                occurred_at__gt=timezone.now()
+                - timedelta(hours=settings.EMAIL_SUBMISSION_RATE_LIMIT_HOURS),
+            ).count()
+            >= settings.EMAIL_SUBMISSION_RATE_LIMIT
         ):
             return render(self.request, "registration/ratelimit.html", status=429)
 
@@ -555,15 +606,18 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
             try:
                 room_id = mn["admin_room"]["room_id"]
                 tmpl = mn["admin_room"].get("message_template", "")
-                body = tmpl.format(
-                    username=username,
-                    matrix_domain=settings.MATRIX_DOMAIN,
-                    email=self.registration.email,
-                    reason=registration_reason,
-                    admin_url=admin_url,
-                ).strip() or f"New registration requested: @{username}:{settings.MATRIX_DOMAIN}"
+                body = (
+                    tmpl.format(
+                        username=username,
+                        matrix_domain=settings.MATRIX_DOMAIN,
+                        email=self.registration.email,
+                        reason=registration_reason,
+                        admin_url=admin_url,
+                    ).strip()
+                    or f"New registration requested: @{username}:{settings.MATRIX_DOMAIN}"
+                )
 
-                synapse_client().send_room_message(room_id, body)
+                synapse_client().send_room_message_with_join_fallback(room_id, body)
                 log_event(
                     registration=self.registration,
                     type=RegistrationEvent.Type.MATRIX_ADMIN_NOTIFIED,
@@ -640,7 +694,9 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
 
         # Create user
         try:
-            client.create_user(username=username, password=password, email=self.registration.email)
+            client.create_user(
+                username=username, password=password, email=self.registration.email
+            )
             log_event(
                 registration=self.registration,
                 type=RegistrationEvent.Type.USER_CREATED,
