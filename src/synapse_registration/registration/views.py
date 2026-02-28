@@ -3,6 +3,7 @@ import hmac
 import logging
 import re
 import time
+import uuid
 
 from datetime import datetime, timedelta
 from ipaddress import ip_network
@@ -99,6 +100,34 @@ class SynapseClient:
 
     def get_user_consent_ts(self, user_id: str) -> int | None:
         return self.get_user(user_id).get("consent_ts")
+
+    def send_room_message(self, room_id: str, body: str, msgtype: str = "m.text") -> None:
+        txn_id = str(uuid.uuid4())
+        r = self.session.put(
+            f"{self.server}/_matrix/client/v3/rooms/{room_id}/send/m.room.message/{txn_id}",
+            json={"msgtype": msgtype, "body": body},
+            headers=self._headers(),
+            verify=self.verify_cert,
+            timeout=15,
+        )
+        if r.status_code not in (200, 201):
+            raise SynapseError(f"send_room_message failed: {r.status_code} {r.text}")
+
+    def create_dm_room(self, user_id: str) -> str:
+        r = self.session.post(
+            f"{self.server}/_matrix/client/v3/createRoom",
+            json={
+                "is_direct": True,
+                "invite": [user_id],
+                "preset": "trusted_private_chat",
+            },
+            headers=self._headers(),
+            verify=self.verify_cert,
+            timeout=20,
+        )
+        if r.status_code not in (200, 201):
+            raise SynapseError(f"create_dm_room failed: {r.status_code} {r.text}")
+        return r.json()["room_id"]
 
 
 class ConsentError(RuntimeError):
@@ -485,6 +514,7 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
             except KeyError:
                 pass
 
+        # Email notification to admins
         admin_url = self.request.build_absolute_uri(reverse_lazy("admin:index"))
 
         context = {
@@ -518,6 +548,38 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
             msg.send()
         except SMTPRecipientsRefused as e:
             logger.error("Failed to send email: %s", e)
+
+        # Matrix admin-room notification
+        mn = getattr(settings, "MATRIX_NOTIFICATIONS", {}) or {}
+        if mn.get("enabled") and mn.get("admin_room", {}).get("room_id"):
+            try:
+                room_id = mn["admin_room"]["room_id"]
+                tmpl = mn["admin_room"].get("message_template", "")
+                body = tmpl.format(
+                    username=username,
+                    matrix_domain=settings.MATRIX_DOMAIN,
+                    email=self.registration.email,
+                    reason=registration_reason,
+                    admin_url=admin_url,
+                ).strip() or f"New registration requested: @{username}:{settings.MATRIX_DOMAIN}"
+
+                synapse_client().send_room_message(room_id, body)
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.MATRIX_ADMIN_NOTIFIED,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    room_id=room_id,
+                )
+            except Exception as e:
+                logger.exception("Failed to send Matrix admin notification")
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.MATRIX_ADMIN_NOTIFICATION_FAILED,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    error=str(e),
+                )
 
         return render(self.request, "registration/registration_pending.html")
 
@@ -578,7 +640,6 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
 
         # Create user
         try:
-            # TODO: Make this return something we can log?
             client.create_user(username=username, password=password, email=self.registration.email)
             log_event(
                 registration=self.registration,
@@ -654,6 +715,46 @@ class SetPasswordView(RateLimitMixin, ContextMixin, FormView):
                     user_id=user_id,
                     error=str(e),
                     policy_version=settings.POLICY_VERSION,
+                )
+
+        # Welcome message
+        mn = getattr(settings, "MATRIX_NOTIFICATIONS", {}) or {}
+        welcome = (mn.get("welcome") or {}) if mn.get("enabled") else {}
+        if welcome.get("enabled"):
+            try:
+                tmpl = welcome.get("message_template", "Welcome!")
+                body = tmpl.format(
+                    username=username,
+                    matrix_domain=settings.MATRIX_DOMAIN,
+                ).strip()
+
+                target_room_id = welcome.get("room_id")
+                if target_room_id:
+                    client.send_room_message(target_room_id, body)
+                    where = {"room_id": target_room_id}
+                else:
+                    # DM: create a direct room with the new user and message them
+                    dm_room_id = client.create_dm_room(user_id=user_id)
+                    client.send_room_message(dm_room_id, body)
+                    where = {"dm_room_id": dm_room_id}
+
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.WELCOME_SENT,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    user_id=user_id,
+                    **where,
+                )
+            except Exception as e:
+                logger.exception("Failed to send welcome message")
+                log_event(
+                    registration=self.registration,
+                    type=RegistrationEvent.Type.WELCOME_SEND_FAILED,
+                    request=self.request,
+                    trust_proxy=settings.TRUST_PROXY,
+                    user_id=user_id,
+                    error=str(e),
                 )
 
         # Mark registration complete

@@ -295,3 +295,7 @@ LOGGING = {
 
 EMAIL_SUBMISSION_RATE_LIMIT = int(config.get("rate_limit", {}).get("email_submission", 3))
 EMAIL_SUBMISSION_RATE_LIMIT_HOURS = int(config.get("rate_limit", {}).get("email_submission_hours", 24))
+
+# Matrix notification configuration from config file
+
+MATRIX_NOTIFICATIONS = config.get("matrix_notifications", {})

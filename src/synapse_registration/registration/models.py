@@ -53,6 +53,9 @@ class RegistrationEvent(models.Model):
         REGISTRATION_REASON_SUBMITTED = "reason_submitted", "Registration reason submitted"
         REQUESTED = "requested", "Registration requested (awaiting admin)"
 
+        MATRIX_ADMIN_NOTIFIED = "admin_notified", "Matrix: admin room notified of registration request"
+        MATRIX_ADMIN_NOTIFICATION_FAILED = "admin_notification_failed", "Matrix: Failed to notify admin room"
+
         APPROVED = "approved", "Approved by admin"
         DENIED = "denied", "Denied by admin"
 
@@ -65,6 +68,9 @@ class RegistrationEvent(models.Model):
 
         CONSENT_OK = "consent_ok", "Consent submitted & verified"
         CONSENT_FAIL = "consent_fail", "Consent submission/verification failed"
+
+        WELCOME_SENT = "welcome_sent", "Matrix welcome message sent"
+        WELCOME_SEND_FAILED = "welcome_send_failed", "Matrix welcome message failed to send"
 
         COMPLETED = "completed", "Registration completed"
 

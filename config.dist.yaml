@@ -25,3 +25,22 @@ retention:
   - started: 2
   - completed: 30
 logo_url: "https://matrix.your.server/logo.png"
+matrix_notifications:
+  enabled: true
+
+  admin_room:
+    room_id: "!adminRoomId:your.server"
+    message_template: |
+      New registration request:
+      - Username: @{username}:{matrix_domain}
+      - Email: {email}
+      - Reason: {reason}
+      Admin: {admin_url}
+
+  welcome:
+    enabled: true
+    message_template: |
+      Welcome @{username}:{matrix_domain}!
+      If you have any questions, feel free to ask in the support room.
+    # optional: if you want to send the welcome to a room instead of DM:
+    # room_id: "!welcomeRoomId:your.server"
