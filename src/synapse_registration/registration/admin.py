@@ -194,7 +194,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
                 "This registration cannot be approved in its current state.",
                 level=messages.ERROR,
             )
-            return redirect
+            return redirect("admin:registration_userregistration_changelist")
 
         if request.method == "POST":
             obj.mod_message = request.POST.get("mod_message", obj.mod_message or "")
