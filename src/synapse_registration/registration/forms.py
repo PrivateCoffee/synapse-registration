@@ -24,11 +24,14 @@ class UsernameForm(forms.Form):
         cleaned_data = super().clean()
         username = cleaned_data.get("username")
 
+        if not username:
+            self.add_error("username", "Username cannot be empty.")
+            return cleaned_data
+
         if username.startswith("@") and username.endswith(f":{settings.MATRIX_DOMAIN}"):
             username = username[1 : -len(f":{settings.MATRIX_DOMAIN}")]
 
-        if not username:
-            self.add_error("username", "Username cannot be empty.")
+        username = username.lower()
 
         if not all(
             c in "abcdefghijklmnopqrstuvwxyz0123456789._=-" for c in username.lower()

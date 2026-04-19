@@ -59,6 +59,12 @@ class SynapseClient:
             verify=self.verify_cert,
             timeout=15,
         )
+        if r.status_code == 400:
+            try:
+                if r.json().get("errcode") == "M_USER_IN_USE":
+                    return False
+            except ValueError:
+                pass
         if r.status_code != 200:
             raise SynapseError(
                 f"username_available failed: {r.status_code} {r.text}",
@@ -329,6 +335,7 @@ class CheckUsernameView(RateLimitMixin, ContextMixin, FormView):
 class EmailInputView(RateLimitMixin, ContextMixin, FormView):
     template_name = "registration/email_form.html"
     form_class = EmailForm
+    success_url = reverse_lazy("email_sent")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -460,7 +467,7 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             registration.delete()
             return self.form_invalid(form)
 
-        return render(self.request, "registration/email_sent.html")
+        return super().form_valid(form)
 
 
 class VerifyEmailView(RateLimitMixin, View):
@@ -635,7 +642,7 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
                     error=str(e),
                 )
 
-        return render(self.request, "registration/registration_pending.html")
+        return redirect("registration_complete")
 
 
 class SetPasswordView(RateLimitMixin, ContextMixin, FormView):

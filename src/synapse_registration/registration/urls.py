@@ -7,6 +7,11 @@ urlpatterns = [
     path("check-username/", views.CheckUsernameView.as_view(), name="check_username"),
     path("email-input/", views.EmailInputView.as_view(), name="email_input"),
     path(
+        "email-sent/",
+        views.TemplateView.as_view(template_name="registration/email_sent.html"),
+        name="email_sent",
+    ),
+    path(
         "verify-email/<str:token>/",
         views.VerifyEmailView.as_view(),
         name="verify_email",
@@ -19,7 +24,7 @@ urlpatterns = [
     path(
         "registration-complete/",
         views.TemplateView.as_view(
-            template_name="registration/registration_complete.html"
+            template_name="registration/registration_pending.html"
         ),
         name="registration_complete",
     ),
