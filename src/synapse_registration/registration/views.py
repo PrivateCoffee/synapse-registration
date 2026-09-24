@@ -13,6 +13,7 @@ import requests
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
@@ -286,7 +287,7 @@ class RateLimitMixin:
                 "REMOTE_ADDR"
             )
 
-        for block in IPBlock.objects.filter(expires__gt=timezone.now()):
+        for block in IPBlock.objects.filter(Q(expires__isnull=True) | Q(expires__gt=timezone.now())):
             if ip_network(ip_address) in ip_network(f"{block.network}/{block.netmask}"):
                 return render(request, "registration/ratelimit.html", status=429)
 

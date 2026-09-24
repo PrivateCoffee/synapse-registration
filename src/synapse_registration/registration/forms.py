@@ -1,5 +1,6 @@
 from django import forms
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 
 import re
@@ -41,7 +42,7 @@ class UsernameForm(forms.Form):
                 "Sorry, your username can only contain the characters a-z, 0-9, ., _, =, -, and /.",
             )
 
-        for rule in UsernameRule.objects.filter(expires__gt=timezone.now()):
+        for rule in UsernameRule.objects.filter(Q(expires__isnull=True) | Q(expires__gt=timezone.now())):
             regex = re.compile(rule.regex)
 
             if regex.match(username):
@@ -75,7 +76,7 @@ class EmailForm(forms.Form):
                 "email", "You have recently registered with this email address."
             )
 
-        for rule in EmailBlock.objects.filter(expires__gt=timezone.now()):
+        for rule in EmailBlock.objects.filter(Q(expires__isnull=True) | Q(expires__gt=timezone.now())):
             regex = re.compile(rule.regex)
 
             if regex.match(email):
