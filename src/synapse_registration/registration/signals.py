@@ -1,13 +1,13 @@
+from smtplib import SMTPRecipientsRefused
+
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-from django.conf import settings
 from django.urls import reverse
 
 from .models import UserRegistration
-
-from smtplib import SMTPRecipientsRefused
 
 
 @receiver(post_save, sender=UserRegistration)
@@ -42,7 +42,7 @@ def handle_status_change(sender, instance, created, **kwargs):
                     "registration/email/mjml/registration-approved.mjml", context
                 )
                 msg.attach_alternative(html_content, "text/html")
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
 
             try:
@@ -50,34 +50,37 @@ def handle_status_change(sender, instance, created, **kwargs):
             except SMTPRecipientsRefused:
                 pass
 
-    elif not created and instance.status == UserRegistration.STATUS_DENIED:
+    elif (
+        not created
+        and instance.status == UserRegistration.STATUS_DENIED
+        and instance.notify
+    ):
         # When an admin denies a registration, just inform the user via email
-        if instance.notify:
-            context = {
-                "matrix_domain": settings.MATRIX_DOMAIN,
-                "mod_message": instance.mod_message,
-                "logo": getattr(settings, "LOGO_URL", None),
-            }
+        context = {
+            "matrix_domain": settings.MATRIX_DOMAIN,
+            "mod_message": instance.mod_message,
+            "logo": getattr(settings, "LOGO_URL", None),
+        }
 
-            subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied"
+        subject = f"[{settings.MATRIX_DOMAIN}] Matrix Registration Denied"
 
-            text_content = render_to_string(
-                "registration/email/txt/registration-denied.txt", context
+        text_content = render_to_string(
+            "registration/email/txt/registration-denied.txt", context
+        )
+
+        msg = EmailMultiAlternatives(
+            subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
+        )
+
+        try:
+            html_content = render_to_string(
+                "registration/email/mjml/registration-denied.mjml", context
             )
+            msg.attach_alternative(html_content, "text/html")
+        except Exception:  # noqa: BLE001, S110
+            pass
 
-            msg = EmailMultiAlternatives(
-                subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email]
-            )
-
-            try:
-                html_content = render_to_string(
-                    "registration/email/mjml/registration-denied.mjml", context
-                )
-                msg.attach_alternative(html_content, "text/html")
-            except Exception:
-                pass
-
-            try:
-                msg.send()
-            except SMTPRecipientsRefused:
-                pass
+        try:
+            msg.send()
+        except SMTPRecipientsRefused:
+            pass

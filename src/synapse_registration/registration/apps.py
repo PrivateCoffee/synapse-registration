@@ -6,4 +6,4 @@ class RegistrationConfig(AppConfig):
     name = "synapse_registration.registration"
 
     def ready(self):
-        import synapse_registration.registration.signals  # noqa: F401
+        import synapse_registration.registration.signals  # noqa: F401, PLC0415

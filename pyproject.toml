@@ -17,6 +17,22 @@ classifiers = [
 ]
 dependencies = ["Django", "pyyaml", "requests", "django-mjml"]
 
+[project.optional-dependencies]
+dev = ["ruff", "djlint", "pre-commit"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = ["I", "PLC0415"]
+ignore = ["E501", "RUF012"]
+exclude = ["**/migrations/*.py"]
+
+[tool.djlint]
+profile = "django"
+extension = "html"
+
 [project.scripts]
 synapse_registration = "synapse_registration.manage:main"
 

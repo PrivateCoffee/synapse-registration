@@ -10,14 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
-from django.core.management.utils import get_random_secret_key
-
-import os
-
-import yaml
 import requests
+import yaml
+from django.core.management.utils import get_random_secret_key
 
 CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
 
@@ -293,8 +291,12 @@ LOGGING = {
 # Limits the number of email submissions per IP address within a certain time window to prevent abuse.
 # The default is 3 submissions per 24 hours, but this can be adjusted in the configuration file.
 
-EMAIL_SUBMISSION_RATE_LIMIT = int(config.get("rate_limit", {}).get("email_submission", 3))
-EMAIL_SUBMISSION_RATE_LIMIT_HOURS = int(config.get("rate_limit", {}).get("email_submission_hours", 24))
+EMAIL_SUBMISSION_RATE_LIMIT = int(
+    config.get("rate_limit", {}).get("email_submission", 3)
+)
+EMAIL_SUBMISSION_RATE_LIMIT_HOURS = int(
+    config.get("rate_limit", {}).get("email_submission_hours", 24)
+)
 
 # Matrix notification configuration from config file
 

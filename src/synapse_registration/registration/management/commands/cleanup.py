@@ -1,17 +1,18 @@
-from django.core.management.base import BaseCommand
-from django.utils import timezone
 from datetime import timedelta
-from django.db.models import OuterRef, Subquery, DateTimeField
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.db.models import DateTimeField, OuterRef, Subquery
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 from ...models import (
-    UserRegistration,
-    IPBlock,
     EmailBlock,
-    UsernameRule,
+    IPBlock,
     RegistrationEvent,
+    UsernameRule,
+    UserRegistration,
 )
-from django.conf import settings
 
 
 class Command(BaseCommand):

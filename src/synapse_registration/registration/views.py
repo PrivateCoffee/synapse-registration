@@ -4,13 +4,12 @@ import logging
 import re
 import time
 import uuid
-
-from datetime import datetime, timedelta
+from datetime import timedelta
 from ipaddress import ip_network
 from secrets import token_urlsafe
+from smtplib import SMTPRecipientsRefused
 
 import requests
-
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
@@ -19,12 +18,11 @@ from django.template.loader import render_to_string
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import FormView, TemplateView, View
-from smtplib import SMTPRecipientsRefused
 
+from .audit import log_event
 from .forms import EmailForm, PasswordForm, RegistrationReasonForm, UsernameForm
 from .management.commands.cleanup import Command as CleanupCommand
-from .models import EmailBlock, IPBlock, UserRegistration, RegistrationEvent
-from .audit import log_event
+from .models import EmailBlock, IPBlock, RegistrationEvent, UserRegistration
 
 logger = logging.getLogger(__name__)
 
@@ -287,7 +285,9 @@ class RateLimitMixin:
                 "REMOTE_ADDR"
             )
 
-        for block in IPBlock.objects.filter(Q(expires__isnull=True) | Q(expires__gt=timezone.now())):
+        for block in IPBlock.objects.filter(
+            Q(expires__isnull=True) | Q(expires__gt=timezone.now())
+        ):
             if ip_network(ip_address) in ip_network(f"{block.network}/{block.netmask}"):
                 return render(request, "registration/ratelimit.html", status=429)
 
@@ -317,7 +317,7 @@ class CheckUsernameView(RateLimitMixin, ContextMixin, FormView):
         username = form.cleaned_data["username"]
         try:
             available = synapse_client().username_available(username)
-        except Exception as e:
+        except Exception:
             logger.exception("Synapse username availability check failed")
             form.add_error(
                 None,
@@ -427,7 +427,7 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
             "verification_link": verification_link,
             "matrix_domain": settings.MATRIX_DOMAIN,
             "logo": getattr(settings, "LOGO_URL", None),
-            "current_year": datetime.now().year,
+            "current_year": timezone.now().year,
         }
         subject = f"[{settings.MATRIX_DOMAIN}] Verify your email address"
         text_content = render_to_string(
@@ -442,7 +442,7 @@ class EmailInputView(RateLimitMixin, ContextMixin, FormView):
                 "registration/email/mjml/email-verification.mjml", context
             )
             msg.attach_alternative(html_content, "text/html")
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
         try:
@@ -600,7 +600,7 @@ class CompleteRegistrationView(RateLimitMixin, ContextMixin, FormView):
                 "registration/email/mjml/new-registration.mjml", context
             )
             msg.attach_alternative(html_content, "text/html")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error("Failed to render MJML: %s", e)
 
         try:

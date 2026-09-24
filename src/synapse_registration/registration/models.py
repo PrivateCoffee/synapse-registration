@@ -1,11 +1,12 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 
 class UserRegistration(models.Model):
     """
     Represents a user registration attempt, including all relevant information and status.
     """
+
     # Status constants
     STATUS_STARTED = 0
     STATUS_REQUESTED = 1
@@ -40,21 +41,37 @@ class RegistrationEvent(models.Model):
     """
     Append-only audit trail for a registration.
     """
+
     class Type(models.TextChoices):
         STARTED = "started", "Started"
         USERNAME_CHECK_OK = "username_check_ok", "Username availability confirmed"
-        USERNAME_CHECK_FAIL = "username_check_fail", "Username unavailable / check failed"
+        USERNAME_CHECK_FAIL = (
+            "username_check_fail",
+            "Username unavailable / check failed",
+        )
 
         EMAIL_SUBMITTED = "email_submitted", "Email submitted"
         EMAIL_VERIFICATION_SENT = "email_verification_sent", "Verification email sent"
-        EMAIL_VERIFICATION_SEND_FAILED = "email_verification_send_failed", "Verification email failed to send"
+        EMAIL_VERIFICATION_SEND_FAILED = (
+            "email_verification_send_failed",
+            "Verification email failed to send",
+        )
         EMAIL_VERIFIED = "email_verified", "Email verified"
 
-        REGISTRATION_REASON_SUBMITTED = "reason_submitted", "Registration reason submitted"
+        REGISTRATION_REASON_SUBMITTED = (
+            "reason_submitted",
+            "Registration reason submitted",
+        )
         REQUESTED = "requested", "Registration requested (awaiting admin)"
 
-        MATRIX_ADMIN_NOTIFIED = "admin_notified", "Matrix: admin room notified of registration request"
-        MATRIX_ADMIN_NOTIFICATION_FAILED = "admin_notification_failed", "Matrix: Failed to notify admin room"
+        MATRIX_ADMIN_NOTIFIED = (
+            "admin_notified",
+            "Matrix: admin room notified of registration request",
+        )
+        MATRIX_ADMIN_NOTIFICATION_FAILED = (
+            "admin_notification_failed",
+            "Matrix: Failed to notify admin room",
+        )
 
         APPROVED = "approved", "Approved by admin"
         DENIED = "denied", "Denied by admin"
@@ -70,7 +87,10 @@ class RegistrationEvent(models.Model):
         CONSENT_FAIL = "consent_fail", "Consent submission/verification failed"
 
         WELCOME_SENT = "welcome_sent", "Matrix welcome message sent"
-        WELCOME_SEND_FAILED = "welcome_send_failed", "Matrix welcome message failed to send"
+        WELCOME_SEND_FAILED = (
+            "welcome_send_failed",
+            "Matrix welcome message failed to send",
+        )
 
         COMPLETED = "completed", "Registration completed"
 

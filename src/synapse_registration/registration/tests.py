@@ -5,8 +5,8 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import UserRegistration, UsernameRule
 from .forms import UsernameForm
+from .models import UsernameRule, UserRegistration
 from .views import SynapseClient, SynapseError
 
 

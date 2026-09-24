@@ -1,5 +1,6 @@
 import logging
 import traceback
+
 from django.core.mail import mail_admins
 
 logger = logging.getLogger("synapse_registration")
@@ -14,8 +15,8 @@ class ErrorHandlingMiddleware:
 
     def process_exception(self, request, exception):
         # Log the error
-        error_message = f"Exception in {request.path}: {str(exception)}"
-        logger.error(error_message, exc_info=True)
+        error_message = f"Exception in {request.path}: {exception!s}"
+        logger.error(error_message, exc_info=True)  # noqa: LOG014
 
         # Send an email to admins
         try:
@@ -23,10 +24,7 @@ class ErrorHandlingMiddleware:
             subject = f"Error on {request.path}"
             message = f"An error occurred on {request.path}:\n\n{error_message}\n\nTraceback:\n{tb}"
             mail_admins(subject, message, fail_silently=True)
-        except Exception as e:
-            logger.error(
-                f"Failed to send admin notification email: {str(e)}", exc_info=True
-            )
+        except Exception:
+            logger.exception("Failed to send admin notification email")
 
         # Let Django continue with its normal exception handling
-        return None

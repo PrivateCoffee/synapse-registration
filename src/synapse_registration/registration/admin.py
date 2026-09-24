@@ -1,21 +1,21 @@
+from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import Group
+from django.db.models import DateTimeField, OuterRef, Subquery
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from django.conf import settings
-from django.db.models import OuterRef, Subquery, DateTimeField
 
 from .audit import log_event
 from .models import (
-    UserRegistration,
     EmailBlock,
     IPBlock,
-    UsernameRule,
     RegistrationEvent,
+    UsernameRule,
+    UserRegistration,
 )
 
 admin.site.site_header = "Synapse Registration Administration"
