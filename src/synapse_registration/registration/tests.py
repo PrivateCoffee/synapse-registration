@@ -5,7 +5,7 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .forms import UsernameForm
+from .forms import EmailForm, UsernameForm
 from .models import UsernameRule, UserRegistration
 from .views import SynapseClient, SynapseError
 
@@ -42,6 +42,41 @@ class UsernameFormTests(TestCase):
 
         form = UsernameForm(data={"username": "admin"})
 
+        self.assertTrue(form.is_valid(), form.errors)
+
+
+class EmailFormTests(TestCase):
+    def _make_registration(self, email):
+        return UserRegistration.objects.create(
+            username="alice",
+            email=email,
+            registration_reason="test",
+            ip_address="127.0.0.1",
+            token=email,
+        )
+
+    def test_subaddress_is_stripped(self):
+        form = EmailForm(data={"email": "alice+tag@example.com"})
+        form.is_valid()
+        self.assertEqual(form.cleaned_data["email"], "alice@example.com")
+
+    def test_subaddress_variant_blocked_when_base_address_registered(self):
+        self._make_registration("alice@example.com")
+        form = EmailForm(data={"email": "alice+tag@example.com"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("email", form.errors)
+
+    def test_base_address_blocked_when_subaddress_variant_registered(self):
+        self._make_registration("alice+tag@example.com")
+        form = EmailForm(data={"email": "alice@example.com"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("email", form.errors)
+
+    def test_denied_registration_does_not_block_retry(self):
+        r = self._make_registration("alice@example.com")
+        r.status = UserRegistration.STATUS_DENIED
+        r.save()
+        form = EmailForm(data={"email": "alice@example.com"})
         self.assertTrue(form.is_valid(), form.errors)
 
 

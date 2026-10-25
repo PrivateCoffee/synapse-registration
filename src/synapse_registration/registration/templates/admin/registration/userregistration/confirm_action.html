@@ -3,6 +3,44 @@
 {% block content %}
     <div class="content">
         <h1>{{ title }}</h1>
+        {% if prior_denials %}
+            <div style="margin: 0 0 16px 0;
+                        padding: 12px 16px;
+                        background: #fff3cd;
+                        border: 1px solid #e6a817;
+                        border-radius: 4px">
+                <strong>⚠ Previous denials found</strong>
+                <p style="margin: 6px 0 8px">This applicant shares an email or IP address with previously denied registrations:</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                    <thead>
+                        <tr style="background: rgba(0,0,0,0.06);">
+                            <th style="text-align:left; padding: 5px 10px; border: 1px solid #d5a802">Username</th>
+                            <th style="text-align:left; padding: 5px 10px; border: 1px solid #d5a802">Email</th>
+                            <th style="text-align:left; padding: 5px 10px; border: 1px solid #d5a802">IP address</th>
+                            <th style="text-align:left; padding: 5px 10px; border: 1px solid #d5a802">Match</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for denial in prior_denials %}
+                            <tr>
+                                <td style="padding: 5px 10px; border: 1px solid #d5a802;">@{{ denial.username }}</td>
+                                <td style="padding: 5px 10px; border: 1px solid #d5a802;">
+                                    {% if denial.email|lower == original.email|lower %}<strong>{{ denial.email }}</strong>{% else %}{{ denial.email }}{% endif %}
+                                </td>
+                                <td style="padding: 5px 10px; border: 1px solid #d5a802;">
+                                    {% if denial.ip_address == original.ip_address %}<strong>{{ denial.ip_address }}</strong>{% else %}{{ denial.ip_address }}{% endif %}
+                                </td>
+                                <td style="padding: 5px 10px; border: 1px solid #d5a802;">
+                                    {% if denial.email|lower == original.email|lower and denial.ip_address == original.ip_address %}Email + IP
+                                    {% elif denial.email|lower == original.email|lower %}Email
+                        {% else %}IP{% endif %}
+                            </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
         <p>
             <strong>User:</strong> @{{ original.username }}
             <br>

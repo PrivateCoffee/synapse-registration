@@ -69,11 +69,32 @@ class EmailForm(forms.Form):
         )
     )
 
+    @staticmethod
+    def _email_base(email: str) -> tuple[str, str]:
+        local, _, domain = email.partition("@")
+        return local.partition("+")[0].lower(), domain.lower()
+
     def clean(self):
         cleaned_data = super().clean()
         email = cleaned_data.get("email")
 
-        if UserRegistration.objects.filter(email=email).exists():
+        if not email:
+            return cleaned_data
+
+        base = self._email_base(email)
+        cleaned_data["email"] = f"{base[0]}@{base[1]}"
+
+        active_statuses = [
+            UserRegistration.STATUS_STARTED,
+            UserRegistration.STATUS_REQUESTED,
+            UserRegistration.STATUS_APPROVED,
+        ]
+        if any(
+            self._email_base(e) == base
+            for e in UserRegistration.objects.filter(
+                status__in=active_statuses
+            ).values_list("email", flat=True)
+        ):
             self.add_error(
                 "email", "You have recently registered with this email address."
             )

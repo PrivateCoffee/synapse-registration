@@ -13,3 +13,17 @@
         </li>
     {% endif %}
 {% endblock %}
+{% block content %}
+    {% if prior_denials %}
+        <div style="margin: 0 0 16px 0;
+                    padding: 12px 16px;
+                    background: #fff3cd;
+                    border: 1px solid #e6a817;
+                    border-radius: 4px">
+            <strong>⚠ Previous denials found</strong>
+            — this applicant shares an email or IP address with
+            {{ prior_denials|length }} previously denied registration{{ prior_denials|length|pluralize }}.
+        </div>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

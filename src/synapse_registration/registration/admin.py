@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import Group
-from django.db.models import DateTimeField, OuterRef, Subquery
+from django.db.models import DateTimeField, Exists, OuterRef, Q, Subquery
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
@@ -63,6 +63,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
         "status_badge",
         "started_at",
         "ip_address",
+        "prior_denial_flag",
         "actions_column",
     )
     list_filter = ("status", "email_verified")
@@ -111,14 +112,45 @@ class UserRegistrationAdmin(admin.ModelAdmin):
             .values("occurred_at")[:1]
         )
 
-        # Annotate with a name we can reference for ordering in @admin.display
+        denied_overlap = UserRegistration.objects.filter(
+            Q(email__iexact=OuterRef("email")) | Q(ip_address=OuterRef("ip_address")),
+            status=UserRegistration.STATUS_DENIED,
+        ).exclude(pk=OuterRef("pk"))
+
         return qs.annotate(
-            _started_at=Subquery(started_event_sq, output_field=DateTimeField())
+            _started_at=Subquery(started_event_sq, output_field=DateTimeField()),
+            _previously_denied=Exists(denied_overlap),
         )
 
     @admin.display(description="Started at", ordering="_started_at")
     def started_at(self, obj):
         return getattr(obj, "_started_at", None)
+
+    def _get_prior_denials(self, obj):
+        return (
+            UserRegistration.objects.filter(
+                Q(email__iexact=obj.email) | Q(ip_address=obj.ip_address),
+                status=UserRegistration.STATUS_DENIED,
+            )
+            .exclude(pk=obj.pk)
+            .order_by("-pk")
+        )
+
+    @admin.display(description="Prior denial")
+    def prior_denial_flag(self, obj):
+        if getattr(obj, "_previously_denied", False):
+            return mark_safe(
+                '<span style="color:#c60;font-weight:bold" '
+                'title="A previous denial exists for this email or IP address">⚠ Yes</span>'
+            )
+        return "—"
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj:
+            extra_context["prior_denials"] = self._get_prior_denials(obj)
+        return super().change_view(request, object_id, form_url, extra_context)
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -226,6 +258,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
             "original": obj,
             "title": f"Approve registration: {obj.username}",
             "action_name": "approve",
+            "prior_denials": self._get_prior_denials(obj),
         }
         return TemplateResponse(
             request, "admin/registration/userregistration/confirm_action.html", context
@@ -272,6 +305,7 @@ class UserRegistrationAdmin(admin.ModelAdmin):
             "original": obj,
             "title": f"Deny registration: {obj.username}",
             "action_name": "deny",
+            "prior_denials": self._get_prior_denials(obj),
         }
         return TemplateResponse(
             request, "admin/registration/userregistration/confirm_action.html", context
